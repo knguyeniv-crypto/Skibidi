@@ -1,0 +1,521 @@
+-- MENU CHEAT V4 (GIAO DIỆN GIỮ NGUYÊN + FIX LAG ĐẦY ĐỦ NÂNG CAO)
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
+local tweenService = game:GetService("TweenService")
+local lighting = game:GetService("Lighting")
+local workspace = game:GetService("Workspace")
+local terrain = workspace:WaitForChild("Terrain")
+local player = players.LocalPlayer
+
+local BLOCK_COLOR = Color3.fromRGB(128, 128, 128)
+
+local existingGui = player.PlayerGui:FindFirstChild("UniversalCheatMenu")
+if existingGui then existingGui:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UniversalCheatMenu"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- 1. Nút Icon Tròn
+local iconButton = Instance.new("TextButton")
+iconButton.Name = "MenuIcon"
+iconButton.Size = UDim2.new(0, 60, 0, 60)
+iconButton.Position = UDim2.new(0, 30, 0, 150)
+iconButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+iconButton.TextSize = 24
+iconButton.Font = Enum.Font.SourceSansBold
+iconButton.Text = "⚙️"
+iconButton.Parent = screenGui
+
+local iconCorner = Instance.new("UICorner")
+iconCorner.CornerRadius = UDim.new(1, 0)
+iconCorner.Parent = iconButton
+
+local iconStroke = Instance.new("UIStroke")
+iconStroke.Color = Color3.fromRGB(150, 150, 150)
+iconStroke.Thickness = 2.5
+iconStroke.Parent = iconButton
+
+-- 2. Khung Menu Chính V4
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 330, 0, 250)
+mainFrame.Position = UDim2.new(0, 100, 0, 150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 8)
+frameCorner.Parent = mainFrame
+
+-- Hàm tạo Button chuẩn
+local function CreateButton(text, color, pos, size, textSize)
+	local b = Instance.new("TextButton")
+	b.Text = text
+	b.BackgroundColor3 = color
+	b.Position = pos
+	b.Size = size
+	b.TextSize = textSize or 14
+	b.Font = Enum.Font.SourceSansBold
+	b.TextColor3 = Color3.fromRGB(0, 0, 0)
+	b.BorderSizePixel = 2
+	b.Parent = mainFrame
+	return b
+end
+
+-- Tiêu đề Menu V4
+local title = Instance.new("TextLabel")
+title.Text = "CHEAT MENU V4"
+title.Size = UDim2.new(0, 110, 0, 40)
+title.Position = UDim2.new(0, 210, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+title.TextSize = 13
+title.Font = Enum.Font.SourceSansBold
+title.TextColor3 = Color3.fromRGB(0, 0, 0)
+title.BorderSizePixel = 2
+title.Parent = mainFrame
+
+-- HÀNG 1
+local noclipBtn = CreateButton("Noclip: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 0, 0, 0), UDim2.new(0, 105, 0, 40), 13)
+local fixLagBtn  = CreateButton("Fix Lag: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 105, 0, 0), UDim2.new(0, 105, 0, 40), 13)
+
+-- HÀNG 2
+local godBtn     = CreateButton("God Mode: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 0, 0, 40), UDim2.new(0, 105, 0, 40), 12)
+local infJumpBtn = CreateButton("Inf Jump: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 105, 0, 40), UDim2.new(0, 105, 0, 40), 12)
+
+-- HÀNG 3
+local infHealthBtn = CreateButton("Inf Health: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 0, 0, 80), UDim2.new(0, 105, 0, 40), 11)
+
+-- KHU VỰC BAY & TỐC ĐỘ
+local upBtn    = CreateButton("UP", Color3.fromRGB(100, 255, 200), UDim2.new(0, 0, 0, 125), UDim2.new(0, 52, 0, 35), 14)
+local downBtn  = CreateButton("DOWN", Color3.fromRGB(255, 255, 0), UDim2.new(0, 0, 0, 162), UDim2.new(0, 52, 0, 35), 11)
+
+local plusBtn  = CreateButton("+", Color3.fromRGB(80, 120, 255), UDim2.new(0, 54, 0, 125), UDim2.new(0, 52, 0, 35), 16)
+local minusBtn = CreateButton("-", Color3.fromRGB(100, 255, 255), UDim2.new(0, 54, 0, 162), UDim2.new(0, 52, 0, 35), 16)
+
+-- Hiển thị số tốc độ
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 105, 0, 35)
+speedLabel.Position = UDim2.new(0, 108, 0, 125)
+speedLabel.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+speedLabel.TextSize = 16
+speedLabel.Font = Enum.Font.SourceSansBold
+speedLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+speedLabel.BorderSizePixel = 2
+speedLabel.Parent = mainFrame
+
+-- Nút Fly
+local flyBtn = CreateButton("FLY", Color3.fromRGB(255, 255, 0), UDim2.new(0, 108, 0, 162), UDim2.new(0, 105, 0, 35), 14)
+
+-- Nút phụ trang trí
+local extraBtn = CreateButton("V4.0", Color3.fromRGB(100, 200, 255), UDim2.new(0, 210, 0, 40), UDim2.new(0, 120, 0, 157), 15)
+extraBtn.TextColor3 = Color3.fromRGB(50, 50, 50)
+
+-- Trạng thái
+local menuOpen = false
+local noclipOn = false
+local godModeOn = false
+local infHealthOn = false
+local fixLagOn = false
+local infJumpOn = false
+local flying = false
+local speed = 1
+local vertical = 0
+
+speedLabel.Text = "Speed: 1"
+
+local bv
+local bg
+local noclipConnection
+local godModeConnection
+local infHealthConnection
+local fixLagConnection
+local infJumpConnection
+local myCharConnection
+local animFastConnection
+
+local originalMaxHealth = 100
+local originalPartData = {}
+local removedEffects = {}
+local removedSkyInstances = {}
+local disabledAnimateScripts = {}
+local oldGlobalShadows = lighting.GlobalShadows
+local oldBrightness = lighting.Brightness
+local oldFogEnd = lighting.FogEnd
+
+-- Kéo thả Icon Tròn
+local dragging, dragStart, startPos
+iconButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = iconButton.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+
+userInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		iconButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		mainFrame.Position = UDim2.new(iconButton.Position.X.Scale, iconButton.Position.X.Offset + 70, iconButton.Position.Y.Scale, iconButton.Position.Y.Offset)
+	end
+end)
+
+-- Mở/Đóng menu
+iconButton.MouseButton1Click:Connect(function()
+	menuOpen = not menuOpen
+	local targetRotation = iconButton.Rotation + 360
+	tweenService:Create(iconButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = targetRotation}):Play()
+
+	if menuOpen then
+		mainFrame.Visible = true
+		mainFrame.Size = UDim2.new(0, 0, 0, 0)
+		tweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 330, 0, 205)}):Play()
+	else
+		local shrinkTween = tweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+		shrinkTween:Play()
+		shrinkTween.Completed:Connect(function()
+			if not menuOpen then mainFrame.Visible = false end
+		end)
+	end
+end)
+
+-- Noclip
+noclipBtn.MouseButton1Click:Connect(function()
+	noclipOn = not noclipOn
+	if noclipOn then
+		noclipBtn.Text = "Noclip: ON"
+		noclipBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		noclipConnection = runService.Stepped:Connect(function()
+			local char = player.Character
+			if char then
+				for _, v in pairs(char:GetDescendants()) do
+					if v:IsA("BasePart") then v.CanCollide = false end
+				end
+			end
+		end)
+	else
+		noclipBtn.Text = "Noclip: OFF"
+		noclipBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if noclipConnection then noclipConnection:Disconnect() end
+		local char = player.Character
+		if char then
+			for _, v in pairs(char:GetDescendants()) do
+				if v:IsA("BasePart") then v.CanCollide = true end
+			end
+		end
+	end
+end)
+
+-- God Mode
+godBtn.MouseButton1Click:Connect(function()
+	godModeOn = not godModeOn
+	if godModeOn then
+		godBtn.Text = "God Mode: ON"
+		godBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		godModeConnection = runService.Heartbeat:Connect(function()
+			local char = player.Character
+			if char then
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid and (humanoid:GetState() == Enum.HumanoidStateType.Physics or humanoid.PlatformStand) then
+					humanoid.PlatformStand = false
+					humanoid:ChangeState(Enum.HumanoidStateType.Running)
+				end
+			end
+		end)
+	else
+		godBtn.Text = "God Mode: OFF"
+		godBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if godModeConnection then godModeConnection:Disconnect() end
+	end
+end)
+
+-- Inf Health
+infHealthBtn.MouseButton1Click:Connect(function()
+	infHealthOn = not infHealthOn
+	if infHealthOn then
+		infHealthBtn.Text = "Inf Health: ON"
+		infHealthBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		local char = player.Character
+		if char then
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid then originalMaxHealth = humanoid.MaxHealth end
+		end
+		infHealthConnection = runService.Heartbeat:Connect(function()
+			local char = player.Character
+			if char then
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					humanoid.MaxHealth = 9e18
+					if humanoid.Health < humanoid.MaxHealth then humanoid.Health = humanoid.MaxHealth end
+				end
+			end
+		end)
+	else
+		infHealthBtn.Text = "Inf Health: OFF"
+		infHealthBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if infHealthConnection then infHealthConnection:Disconnect() end
+		local char = player.Character
+		if char then
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.MaxHealth = originalMaxHealth
+				if humanoid.Health > originalMaxHealth then humanoid.Health = originalMaxHealth end
+			end
+		end
+	end
+end)
+
+-- Inf Jump
+infJumpBtn.MouseButton1Click:Connect(function()
+	infJumpOn = not infJumpOn
+	if infJumpOn then
+		infJumpBtn.Text = "Inf Jump: ON"
+		infJumpBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		infJumpConnection = userInputService.JumpRequest:Connect(function()
+			local char = player.Character
+			local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+			if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+		end)
+	else
+		infJumpBtn.Text = "Inf Jump: OFF"
+		infJumpBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if infJumpConnection then infJumpConnection:Disconnect() end
+	end
+end)
+
+-- FIX LAG NÂNG CAO ĐẦY ĐỦ (Đã tích hợp chuẩn xác theo yêu cầu)
+fixLagBtn.MouseButton1Click:Connect(function()
+	fixLagOn = not fixLagOn
+	if fixLagOn then
+		fixLagBtn.Text = "Fix Lag: ON"
+		fixLagBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		
+		oldGlobalShadows = lighting.GlobalShadows
+		oldBrightness = lighting.Brightness
+		oldFogEnd = lighting.FogEnd
+		
+		lighting.GlobalShadows = false
+		lighting.Brightness = 1
+		lighting.FogEnd = 9e9
+		
+		table.clear(removedSkyInstances)
+		for _, v in pairs(lighting:GetChildren()) do
+			if v:IsA("Sky") then
+				table.insert(removedSkyInstances, v)
+				v.Parent = nil
+			end
+		end
+		
+		table.clear(removedEffects)
+		
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("PostEffect") then
+				table.insert(removedEffects, {Instance = v, Parent = v.Parent})
+				v.Parent = nil
+			elseif v:IsA("BasePart") and v ~= terrain then
+				if not originalPartData[v] then
+					originalPartData[v] = {
+						Material = v.Material,
+						Color = v.Color,
+						Reflectance = v.Reflectance,
+						CastShadow = v.CastShadow
+					}
+				end
+				v.Material = Enum.Material.SmoothPlastic
+				v.Reflectance = 0
+				v.CastShadow = false
+				v.Color = BLOCK_COLOR
+			end
+		end
+		
+		table.clear(disabledAnimateScripts)
+		local function ProcessCharacterAnimation(char)
+			local animate = char:FindFirstChild("Animate")
+			if animate and animate:IsA("LocalScript") and animate.Enabled then
+				animate.Enabled = false
+				table.insert(disabledAnimateScripts, animate)
+			end
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+					track:Stop()
+				end
+			end
+		end
+
+		if player.Character then
+			ProcessCharacterAnimation(player.Character)
+			myCharConnection = player.Character.DescendantAdded:Connect(function(v)
+				if v.Name == "Animate" and v:IsA("LocalScript") then
+					v.Enabled = false
+					table.insert(disabledAnimateScripts, v)
+				end
+			end)
+		end
+		
+		animFastConnection = runService.RenderStepped:Connect(function()
+			local char = player.Character
+			if char then
+				local animate = char:FindFirstChild("Animate")
+				if animate and animate:IsA("LocalScript") and animate.Enabled then
+					animate.Enabled = false
+					table.insert(disabledAnimateScripts, animate)
+				end
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+						track:Stop()
+					end
+				end
+			end
+		end)
+		
+		fixLagConnection = workspace.DescendantAdded:Connect(function(v)
+			task.spawn(function()
+				if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("PostEffect") then
+					table.insert(removedEffects, {Instance = v, Parent = v.Parent})
+					v.Parent = nil
+				elseif v:IsA("BasePart") and v ~= terrain and not originalPartData[v] then
+					originalPartData[v] = {
+						Material = v.Material,
+						Color = v.Color,
+						Reflectance = v.Reflectance,
+						CastShadow = v.CastShadow
+					}
+					v.Material = Enum.Material.SmoothPlastic
+					v.Reflectance = 0
+					v.CastShadow = false
+					v.Color = BLOCK_COLOR
+				end
+			end)
+		end)
+	else
+		fixLagBtn.Text = "Fix Lag: OFF"
+		fixLagBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		
+		if animFastConnection then
+			animFastConnection:Disconnect()
+			animFastConnection = nil
+		end
+		if fixLagConnection then
+			fixLagConnection:Disconnect()
+			fixLagConnection = nil
+		end
+		if myCharConnection then
+			myCharConnection:Disconnect()
+			myCharConnection = nil
+		end
+		
+		lighting.GlobalShadows = oldGlobalShadows
+		lighting.Brightness = oldBrightness
+		lighting.FogEnd = oldFogEnd
+		for _, sky in ipairs(removedSkyInstances) do
+			sky.Parent = lighting
+		end
+		
+		for _, data in ipairs(removedEffects) do
+			if data.Instance and data.Parent then
+				data.Instance.Parent = data.Parent
+			end
+		end
+		table.clear(removedEffects)
+		
+		for part, data in pairs(originalPartData) do
+			if part and part.Parent then
+				part.Material = data.Material
+				part.Color = data.Color
+				part.Reflectance = data.Reflectance
+				part.CastShadow = data.CastShadow
+			end
+		end
+		table.clear(originalPartData)
+
+		for _, scriptObj in ipairs(disabledAnimateScripts) do
+			if scriptObj and scriptObj.Parent then
+				scriptObj.Enabled = true
+			end
+		end
+		table.clear(disabledAnimateScripts)
+		
+		if player.Character then
+			local animate = player.Character:FindFirstChild("Animate")
+			if animate and animate:IsA("LocalScript") then
+				animate.Enabled = true
+			end
+		end
+	end
+end)
+
+-- Tốc độ & Fly
+plusBtn.MouseButton1Click:Connect(function()
+	speed += 1
+	speedLabel.Text = "Speed: " .. tostring(speed)
+end)
+
+minusBtn.MouseButton1Click:Connect(function()
+	speed = math.max(1, speed - 1)
+	speedLabel.Text = "Speed: " .. tostring(speed)
+end)
+
+upBtn.MouseButton1Down:Connect(function() vertical = 1 end)
+upBtn.MouseButton1Up:Connect(function() vertical = 0 end)
+downBtn.MouseButton1Down:Connect(function() vertical = -1 end)
+downBtn.MouseButton1Up:Connect(function() vertical = 0 end)
+
+flyBtn.MouseButton1Click:Connect(function()
+	flying = not flying
+	local char = player.Character
+	local humanoid = char and char:WaitForChild("Humanoid")
+	local hrp = char and char:WaitForChild("HumanoidRootPart")
+	
+	if flying then
+		flyBtn.Text = "UNFLY"
+		flyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		if hrp then
+			bv = Instance.new("BodyVelocity")
+			bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+			bv.Velocity = Vector3.zero
+			bv.Parent = hrp
+			bg = Instance.new("BodyGyro")
+			bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+			bg.P = 10000
+			bg.Parent = hrp
+		end
+		if humanoid then humanoid.PlatformStand = true end
+	else
+		flyBtn.Text = "FLY"
+		flyBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
+		if humanoid then humanoid.PlatformStand = false end
+	end
+end)
+
+runService.RenderStepped:Connect(function()
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char and char:FindFirstChild("Humanoid")
+	
+	if flying and hrp and humanoid and bv and bg then
+		local cam = workspace.CurrentCamera
+		local move = humanoid.MoveDirection
+		local localMove = hrp.CFrame:VectorToObjectSpace(move)
+		local velocity =
+			(hrp.CFrame.LookVector * -localMove.Z) +
+			(hrp.CFrame.RightVector * localMove.X)
+		velocity += Vector3.new(0, vertical, 0)
+		if velocity.Magnitude > 0 then velocity = velocity.Unit end
+		bv.Velocity = velocity * (speed * 20)
+		bg.CFrame = cam.CFrame
+	end
+end)
