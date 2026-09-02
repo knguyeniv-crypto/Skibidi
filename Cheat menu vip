@@ -1,0 +1,601 @@
+-- MENU CHEAT (FIXED TOPBAR & GUI VISIBILITY)
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
+local tweenService = game:GetService("TweenService")
+local lighting = game:GetService("Lighting")
+local workspace = game:GetService("Workspace")
+local terrain = workspace:WaitForChild("Terrain")
+local player = players.LocalPlayer
+
+-- Tìm Parent tối ưu để đè lên CoreGui / Menu Roblox
+local getHui = gethui or function()
+	local coreGui = game:GetService("CoreGui")
+	return coreGui:FindFirstChild("RobloxGui") or coreGui
+end
+
+local targetParent = player:WaitForChild("PlayerGui")
+pcall(function()
+	targetParent = getHui()
+end)
+
+-- Xóa GUI cũ nếu tồn tại
+local oldGui = targetParent:FindFirstChild("UniversalCheatMenu") or player.PlayerGui:FindFirstChild("UniversalCheatMenu")
+if oldGui then oldGui:Destroy() end
+
+-- Biến lưu trữ
+local BLOCK_COLOR = Color3.fromRGB(128, 128, 128)
+local removedSkyInstances = {}
+local removedEffects = {}
+local originalPartData = {}
+local oldGlobalShadows, oldBrightness, oldFogEnd
+local fixLagConnection
+local noclipConnection, infHealthConnection, infJumpConnection
+local originalMaxHealth = 100
+
+-- ScreenGui chính
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UniversalCheatMenu"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 2147483647 -- Giá trị ZIndex lớn nhất
+screenGui.IgnoreGuiInset = true    -- Tràn hết màn hình
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- Giúp nút con không bị chìm
+screenGui.Parent = targetParent
+
+-- 1. Nút Icon Tròn
+local iconButton = Instance.new("TextButton")
+iconButton.Name = "MenuIcon"
+iconButton.Size = UDim2.new(0, 50, 0, 50)
+iconButton.Position = UDim2.new(0, 20, 0, 150)
+iconButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+iconButton.TextSize = 22
+iconButton.Font = Enum.Font.SourceSansBold
+iconButton.Text = "⚙️"
+iconButton.Parent = screenGui
+
+local iconCorner = Instance.new("UICorner")
+iconCorner.CornerRadius = UDim.new(1, 0)
+iconCorner.Parent = iconButton
+local iconStroke = Instance.new("UIStroke")
+iconStroke.Color = Color3.fromRGB(150, 150, 150)
+iconStroke.Thickness = 2
+iconStroke.Parent = iconButton
+
+-- 2. Khung Menu Chính
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 320, 0, 235)
+mainFrame.Position = UDim2.new(0, 80, 0, 150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 6)
+frameCorner.Parent = mainFrame
+
+-- Kéo thả Icon
+local dragging, dragStart, startPos
+iconButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true; dragStart = input.Position; startPos = iconButton.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+userInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		iconButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		mainFrame.Position = UDim2.new(iconButton.Position.X.Scale, iconButton.Position.X.Offset + 60, iconButton.Position.Y.Scale, iconButton.Position.Y.Offset)
+	end
+end)
+
+-- Đóng/Mở
+local menuOpen = false
+iconButton.MouseButton1Click:Connect(function()
+	menuOpen = not menuOpen
+	tweenService:Create(iconButton, TweenInfo.new(0.3), {Rotation = iconButton.Rotation + 360}):Play()
+	mainFrame.Visible = menuOpen
+end)
+
+-- ==================== THANH TOP BAR ====================
+local topBar = Instance.new("Frame", mainFrame)
+topBar.Size = UDim2.new(1, 0, 0, 35)
+topBar.BackgroundTransparency = 1
+
+-- FPS Counter
+local fpsLabel = Instance.new("TextLabel", topBar)
+fpsLabel.Size = UDim2.new(0, 75, 1, 0)
+fpsLabel.Position = UDim2.new(0, 0, 0, 0)
+fpsLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+fpsLabel.Font = Enum.Font.SourceSansBold
+fpsLabel.TextSize = 13
+fpsLabel.Text = "FPS: 60"
+fpsLabel.BorderSizePixel = 2
+fpsLabel.Active = false
+
+local frames, lastTick = 0, tick()
+runService.RenderStepped:Connect(function()
+	frames = frames + 1
+	if tick() - lastTick >= 1 then
+		fpsLabel.Text = "FPS: " .. frames
+		frames = 0
+		lastTick = tick()
+	end
+end)
+
+-- Title Menu
+local title = Instance.new("TextLabel", topBar)
+title.Size = UDim2.new(0, 95, 1, 0)
+title.Position = UDim2.new(0, 75, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+title.TextColor3 = Color3.fromRGB(0, 0, 0)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 12
+title.Text = "CHEAT MENU"
+title.BorderSizePixel = 2
+
+-- Điều hướng trang: < Trang 1 >
+local prevBtn = Instance.new("TextButton", topBar)
+prevBtn.Size = UDim2.new(0, 25, 1, 0)
+prevBtn.Position = UDim2.new(0, 170, 0, 0)
+prevBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+prevBtn.Text = "<"
+prevBtn.Font = Enum.Font.SourceSansBold
+prevBtn.TextSize = 15
+prevBtn.BorderSizePixel = 2
+
+local pageLabel = Instance.new("TextLabel", topBar)
+pageLabel.Size = UDim2.new(0, 75, 1, 0)
+pageLabel.Position = UDim2.new(0, 195, 0, 0)
+pageLabel.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+pageLabel.Text = "Trang 1"
+pageLabel.Font = Enum.Font.SourceSansBold
+pageLabel.TextSize = 12
+pageLabel.BorderSizePixel = 2
+
+local nextBtn = Instance.new("TextButton", topBar)
+nextBtn.Size = UDim2.new(0, 50, 1, 0)
+nextBtn.Position = UDim2.new(0, 270, 0, 0)
+nextBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+nextBtn.Text = ">"
+nextBtn.Font = Enum.Font.SourceSansBold
+nextBtn.TextSize = 15
+nextBtn.BorderSizePixel = 2
+
+local function CreateBtn(t, c, pos, size, ts, parent)
+	local b = Instance.new("TextButton", parent)
+	b.Text = t; b.BackgroundColor3 = c; b.Position = pos; b.Size = size
+	b.TextSize = ts or 13; b.Font = Enum.Font.SourceSansBold; b.TextColor3 = Color3.fromRGB(0,0,0)
+	b.BorderSizePixel = 2
+	return b
+end
+
+-- ==================== TRANG 1 ====================
+local page1 = Instance.new("Frame", mainFrame)
+page1.Size = UDim2.new(1, 0, 1, -35); page1.Position = UDim2.new(0, 0, 0, 35)
+page1.BackgroundTransparency = 1; page1.Visible = true
+
+local noclipBtn = CreateBtn("Noclip: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,0,0,0), UDim2.new(0,160,0,38), 13, page1)
+local fixLagBtn = CreateBtn("Fix Lag: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,160,0,0), UDim2.new(0,160,0,38), 13, page1)
+local infJumpBtn = CreateBtn("Inf Jump: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,0,0,40), UDim2.new(0,160,0,38), 13, page1)
+local infHealthBtn = CreateBtn("Inf Health: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,160,0,40), UDim2.new(0,160,0,38), 13, page1)
+
+-- Fly Controls (Trang 1)
+local upBtn    = CreateBtn("UP", Color3.fromRGB(100, 255, 200), UDim2.new(0,0,0,82), UDim2.new(0,80,0,35), 13, page1)
+local plusBtn  = CreateBtn("+", Color3.fromRGB(80, 120, 255), UDim2.new(0,80,0,82), UDim2.new(0,80,0,35), 15, page1)
+local speedLbl = Instance.new("TextLabel", page1)
+speedLbl.Size = UDim2.new(0,160,0,35); speedLbl.Position = UDim2.new(0,160,0,82)
+speedLbl.BackgroundColor3 = Color3.fromRGB(255,100,0); speedLbl.Text = "Fly Spd: 1"
+speedLbl.Font = Enum.Font.SourceSansBold; speedLbl.TextSize = 13; speedLbl.BorderSizePixel = 2
+local downBtn  = CreateBtn("DOWN", Color3.fromRGB(255, 255, 0), UDim2.new(0,0,0,119), UDim2.new(0,80,0,35), 11, page1)
+local minusBtn = CreateBtn("-", Color3.fromRGB(100, 255, 255), UDim2.new(0,80,0,119), UDim2.new(0,80,0,35), 15, page1)
+local flyBtn   = CreateBtn("FLY", Color3.fromRGB(255, 255, 0), UDim2.new(0,160,0,119), UDim2.new(0,160,0,35), 13, page1)
+
+-- ==================== TRANG 2 ====================
+local page2 = Instance.new("Frame", mainFrame)
+page2.Size = UDim2.new(1, 0, 1, -35); page2.Position = UDim2.new(0, 0, 0, 35)
+page2.BackgroundTransparency = 1; page2.Visible = false
+
+local walkSpeedBtn = CreateBtn("Speed: OFF", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,0), UDim2.new(0,160,0,38), 13, page2)
+local walkSpeedInput = Instance.new("TextBox", page2)
+walkSpeedInput.Size = UDim2.new(0,160,0,38); walkSpeedInput.Position = UDim2.new(0,160,0,0)
+walkSpeedInput.BackgroundColor3 = Color3.fromRGB(200,200,200); walkSpeedInput.Text = "50"; walkSpeedInput.Font = Enum.Font.SourceSansBold; walkSpeedInput.TextSize = 13; walkSpeedInput.BorderSizePixel = 2
+
+local jumpPowerBtn = CreateBtn("Jump: OFF", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,40), UDim2.new(0,160,0,38), 13, page2)
+local jumpPowerInput = Instance.new("TextBox", page2)
+jumpPowerInput.Size = UDim2.new(0,160,0,38); jumpPowerInput.Position = UDim2.new(0,160,0,40)
+jumpPowerInput.BackgroundColor3 = Color3.fromRGB(200,200,200); jumpPowerInput.Text = "100"; jumpPowerInput.Font = Enum.Font.SourceSansBold; jumpPowerInput.TextSize = 13; jumpPowerInput.BorderSizePixel = 2
+
+local espBtn = CreateBtn("ESP: OFF", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,82), UDim2.new(0,320,0,35), 13, page2)
+
+local tpBtn = CreateBtn("Teleport", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,119), UDim2.new(0,160,0,35), 13, page2)
+local selectPlayerBtn = CreateBtn("Chọn Player ▼", Color3.fromRGB(200,200,200), UDim2.new(0,160,0,119), UDim2.new(0,160,0,35), 12, page2)
+
+-- Dropdown danh sách người chơi
+local playerScroll = Instance.new("ScrollingFrame", page2)
+playerScroll.Size = UDim2.new(0, 160, 0, 100)
+playerScroll.Position = UDim2.new(0, 160, 0, 19)
+playerScroll.BackgroundColor3 = Color3.fromRGB(40,40,40)
+playerScroll.BorderSizePixel = 2
+playerScroll.ScrollBarThickness = 5
+playerScroll.ZIndex = 100
+playerScroll.Visible = false
+local listLayout = Instance.new("UIListLayout", playerScroll)
+
+-- ==================== CHUYỂN TRANG ====================
+local currentPage = 1
+local maxPages = 2
+
+local function updatePage()
+	page1.Visible = (currentPage == 1)
+	page2.Visible = (currentPage == 2)
+	pageLabel.Text = "Trang " .. currentPage
+	playerScroll.Visible = false
+end
+
+nextBtn.MouseButton1Click:Connect(function()
+	currentPage = currentPage + 1
+	if currentPage > maxPages then currentPage = 1 end
+	updatePage()
+end)
+
+prevBtn.MouseButton1Click:Connect(function()
+	currentPage = currentPage - 1
+	if currentPage < 1 then currentPage = maxPages end
+	updatePage()
+end)
+
+-- ==================== FIX LAG (KHÔNG ĐỤNG ANIMATION) ====================
+local fixLagOn = false
+fixLagBtn.MouseButton1Click:Connect(function()
+	fixLagOn = not fixLagOn
+	if fixLagOn then
+		fixLagBtn.Text = "Fix Lag: ON"
+		fixLagBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		
+		oldGlobalShadows = lighting.GlobalShadows
+		oldBrightness = lighting.Brightness
+		oldFogEnd = lighting.FogEnd
+		
+		lighting.GlobalShadows = false
+		lighting.Brightness = 1
+		lighting.FogEnd = 9e9
+		
+		table.clear(removedSkyInstances)
+		for _, v in pairs(lighting:GetChildren()) do
+			if v:IsA("Sky") then
+				table.insert(removedSkyInstances, v)
+				v.Parent = nil
+			end
+		end
+		
+		table.clear(removedEffects)
+		
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("PostEffect") then
+				table.insert(removedEffects, {Instance = v, Parent = v.Parent})
+				v.Parent = nil
+			elseif v:IsA("BasePart") and v ~= terrain then
+				if not originalPartData[v] then
+					originalPartData[v] = {
+						Material = v.Material,
+						Color = v.Color,
+						Reflectance = v.Reflectance,
+						CastShadow = v.CastShadow
+					}
+				end
+				v.Material = Enum.Material.SmoothPlastic
+				v.Reflectance = 0
+				v.CastShadow = false
+				v.Color = BLOCK_COLOR
+			end
+		end
+		
+		fixLagConnection = workspace.DescendantAdded:Connect(function(v)
+			task.spawn(function()
+				if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("PostEffect") then
+					table.insert(removedEffects, {Instance = v, Parent = v.Parent})
+					v.Parent = nil
+				elseif v:IsA("BasePart") and v ~= terrain and not originalPartData[v] then
+					originalPartData[v] = {
+						Material = v.Material,
+						Color = v.Color,
+						Reflectance = v.Reflectance,
+						CastShadow = v.CastShadow
+					}
+					v.Material = Enum.Material.SmoothPlastic
+					v.Reflectance = 0
+					v.CastShadow = false
+					v.Color = BLOCK_COLOR
+				end
+			end)
+		end)
+	else
+		fixLagBtn.Text = "Fix Lag: OFF"
+		fixLagBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		
+		if fixLagConnection then fixLagConnection:Disconnect(); fixLagConnection = nil end
+		
+		lighting.GlobalShadows = oldGlobalShadows
+		lighting.Brightness = oldBrightness
+		lighting.FogEnd = oldFogEnd
+		for _, sky in ipairs(removedSkyInstances) do sky.Parent = lighting end
+		
+		for _, data in ipairs(removedEffects) do
+			if data.Instance and data.Parent then data.Instance.Parent = data.Parent end
+		end
+		table.clear(removedEffects)
+		
+		for part, data in pairs(originalPartData) do
+			if part and part.Parent then
+				part.Material = data.Material
+				part.Color = data.Color
+				part.Reflectance = data.Reflectance
+				part.CastShadow = data.CastShadow
+			end
+		end
+		table.clear(originalPartData)
+	end
+end)
+
+-- ==================== NOCLIP ====================
+local noclipOn = false
+noclipBtn.MouseButton1Click:Connect(function()
+	noclipOn = not noclipOn
+	if noclipOn then
+		noclipBtn.Text = "Noclip: ON"
+		noclipBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		noclipConnection = runService.Stepped:Connect(function()
+			local char = player.Character
+			if char then
+				for _, v in pairs(char:GetDescendants()) do
+					if v:IsA("BasePart") then v.CanCollide = false end
+				end
+			end
+		end)
+	else
+		noclipBtn.Text = "Noclip: OFF"
+		noclipBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if noclipConnection then noclipConnection:Disconnect() end
+		local char = player.Character
+		if char then
+			for _, v in pairs(char:GetDescendants()) do
+				if v:IsA("BasePart") then v.CanCollide = true end
+			end
+		end
+	end
+end)
+
+-- ==================== INF HEALTH & INF JUMP ====================
+local infHealthOn, infJumpOn = false, false
+
+infHealthBtn.MouseButton1Click:Connect(function()
+	infHealthOn = not infHealthOn
+	if infHealthOn then
+		infHealthBtn.Text = "Inf Health: ON"
+		infHealthBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		local char = player.Character
+		if char then
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid then originalMaxHealth = humanoid.MaxHealth end
+		end
+		infHealthConnection = runService.Heartbeat:Connect(function()
+			local char = player.Character
+			if char then
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					humanoid.MaxHealth = 9e18
+					if humanoid.Health < humanoid.MaxHealth then humanoid.Health = humanoid.MaxHealth end
+				end
+			end
+		end)
+	else
+		infHealthBtn.Text = "Inf Health: OFF"
+		infHealthBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if infHealthConnection then infHealthConnection:Disconnect() end
+		local char = player.Character
+		if char then
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.MaxHealth = originalMaxHealth
+				if humanoid.Health > originalMaxHealth then humanoid.Health = originalMaxHealth end
+			end
+		end
+	end
+end)
+
+infJumpBtn.MouseButton1Click:Connect(function()
+	infJumpOn = not infJumpOn
+	if infJumpOn then
+		infJumpBtn.Text = "Inf Jump: ON"
+		infJumpBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		infJumpConnection = userInputService.JumpRequest:Connect(function()
+			local char = player.Character
+			local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+			if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+		end)
+	else
+		infJumpBtn.Text = "Inf Jump: OFF"
+		infJumpBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		if infJumpConnection then infJumpConnection:Disconnect() end
+	end
+end)
+
+-- ==================== TELEPORT & SELECT PLAYER ====================
+local targetPlayer = nil
+local function RefreshList()
+	for _, child in pairs(playerScroll:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	local yCount = 0
+	for _, plr in pairs(players:GetPlayers()) do
+		if plr ~= player then
+			local btn = Instance.new("TextButton", playerScroll)
+			btn.Size = UDim2.new(1, 0, 0, 25)
+			btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+			btn.TextColor3 = Color3.fromRGB(255,255,255)
+			btn.Text = plr.Name
+			btn.Font = Enum.Font.SourceSans
+			btn.TextSize = 12
+			
+			btn.MouseButton1Click:Connect(function()
+				targetPlayer = plr
+				selectPlayerBtn.Text = plr.Name
+				playerScroll.Visible = false
+			end)
+			yCount = yCount + 25
+		end
+	end
+	playerScroll.CanvasSize = UDim2.new(0, 0, 0, yCount)
+end
+
+selectPlayerBtn.MouseButton1Click:Connect(function()
+	playerScroll.Visible = not playerScroll.Visible
+	if playerScroll.Visible then RefreshList() end
+end)
+
+tpBtn.MouseButton1Click:Connect(function()
+	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+		local myChar = player.Character
+		local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+		if myRoot then
+			tpBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+			myRoot.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+			task.wait(0.2)
+			tpBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		end
+	end
+end)
+
+-- ==================== ESP ====================
+local espOn = false
+local espObjects = {}
+local function createESP(plr)
+	if plr == player or espObjects[plr] then return end
+	local hl = Instance.new("Highlight")
+	hl.FillColor = Color3.fromRGB(255,0,0); hl.FillTransparency = 0.5; hl.OutlineTransparency = 0
+	local bill = Instance.new("BillboardGui")
+	bill.Size = UDim2.new(0,200,0,50); bill.AlwaysOnTop = true
+	local txt = Instance.new("TextLabel", bill)
+	txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1
+	txt.TextSize = 13; txt.Font = Enum.Font.SourceSansBold; txt.TextColor3 = Color3.fromRGB(0,255,0); txt.TextStrokeTransparency = 0
+	espObjects[plr] = {Highlight = hl, Billboard = bill, Label = txt}
+end
+
+local function removeESP(plr)
+	if espObjects[plr] then
+		if espObjects[plr].Highlight then espObjects[plr].Highlight:Destroy() end
+		if espObjects[plr].Billboard then espObjects[plr].Billboard:Destroy() end
+		espObjects[plr] = nil
+	end
+end
+
+espBtn.MouseButton1Click:Connect(function()
+	espOn = not espOn
+	if espOn then
+		espBtn.Text = "ESP: ON"; espBtn.BackgroundColor3 = Color3.fromRGB(0,200,0)
+		for _, p in pairs(players:GetPlayers()) do createESP(p) end
+	else
+		espBtn.Text = "ESP: OFF"; espBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
+		for p, _ in pairs(espObjects) do removeESP(p) end
+	end
+end)
+
+runService.RenderStepped:Connect(function()
+	if not espOn then return end
+	local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	for plr, obj in pairs(espObjects) do
+		local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+		if root and myRoot then
+			if obj.Highlight.Parent ~= plr.Character then obj.Highlight.Parent = plr.Character end
+			if obj.Billboard.Parent ~= root then obj.Billboard.Parent = root end
+			local dist = math.floor((myRoot.Position - root.Position).Magnitude)
+			obj.Label.Text = plr.Name .. "\n[" .. dist .. " bước]"
+		else
+			if obj.Highlight.Parent then obj.Highlight.Parent = nil end
+			if obj.Billboard.Parent then obj.Billboard.Parent = nil end
+		end
+	end
+end)
+players.PlayerAdded:Connect(function(p) if espOn then createESP(p) end end)
+players.PlayerRemoving:Connect(removeESP)
+
+-- ==================== SPEED & JUMP ====================
+local wsOn, jpOn = false, false
+local wsVal, jpVal = 50, 100
+
+walkSpeedInput.FocusLost:Connect(function()
+	local n = tonumber(walkSpeedInput.Text)
+	wsVal = n and math.clamp(n, 1, 500) or 16
+	walkSpeedInput.Text = tostring(wsVal)
+end)
+jumpPowerInput.FocusLost:Connect(function()
+	local n = tonumber(jumpPowerInput.Text)
+	jpVal = n and math.clamp(n, 1, 500) or 50
+	jumpPowerInput.Text = tostring(jpVal)
+end)
+walkSpeedBtn.MouseButton1Click:Connect(function()
+	wsOn = not wsOn
+	walkSpeedBtn.Text = wsOn and "Speed: ON" or "Speed: OFF"
+	walkSpeedBtn.BackgroundColor3 = wsOn and Color3.fromRGB(0,200,0) or Color3.fromRGB(255,80,80)
+	if not wsOn and player.Character and player.Character:FindFirstChild("Humanoid") then
+		player.Character.Humanoid.WalkSpeed = 16
+	end
+end)
+jumpPowerBtn.MouseButton1Click:Connect(function()
+	jpOn = not jpOn
+	jumpPowerBtn.Text = jpOn and "Jump: ON" or "Jump: OFF"
+	jumpPowerBtn.BackgroundColor3 = jpOn and Color3.fromRGB(0,200,0) or Color3.fromRGB(255,80,80)
+	if not jpOn and player.Character and player.Character:FindFirstChild("Humanoid") then
+		player.Character.Humanoid.JumpPower = 50
+	end
+end)
+
+runService.Heartbeat:Connect(function()
+	local h = player.Character and player.Character:FindFirstChild("Humanoid")
+	if h then
+		if wsOn then h.WalkSpeed = wsVal end
+		if jpOn then h.UseJumpPower = true; h.JumpPower = jpVal end
+	end
+end)
+
+-- ==================== FLY ====================
+local flying, speed, vertical = false, 1, 0
+plusBtn.MouseButton1Click:Connect(function() speed += 1; speedLbl.Text = "Fly Spd: "..speed end)
+minusBtn.MouseButton1Click:Connect(function() speed = math.max(1,speed-1); speedLbl.Text = "Fly Spd: "..speed end)
+upBtn.MouseButton1Down:Connect(function() vertical = 1 end); upBtn.MouseButton1Up:Connect(function() vertical = 0 end)
+downBtn.MouseButton1Down:Connect(function() vertical = -1 end); downBtn.MouseButton1Up:Connect(function() vertical = 0 end)
+
+local bv, bg
+flyBtn.MouseButton1Click:Connect(function()
+	flying = not flying
+	flyBtn.Text = flying and "UNFLY" or "FLY"
+	flyBtn.BackgroundColor3 = flying and Color3.fromRGB(0,200,0) or Color3.fromRGB(255,255,0)
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local h = player.Character and player.Character:FindFirstChild("Humanoid")
+	if flying and hrp then
+		bv = Instance.new("BodyVelocity", hrp); bv.MaxForce = Vector3.new(math.huge,math.huge,math.huge); bv.Velocity = Vector3.zero
+		bg = Instance.new("BodyGyro", hrp); bg.MaxTorque = Vector3.new(math.huge,math.huge,math.huge); bg.P = 10000
+		if h then h.PlatformStand = true end
+	else
+		if bv then bv:Destroy() end; if bg then bg:Destroy() end
+		if h then h.PlatformStand = false end
+	end
+end)
+
+runService.RenderStepped:Connect(function()
+	if flying and bv and bg and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp, h = player.Character.HumanoidRootPart, player.Character.Humanoid
+		local move = hrp.CFrame:VectorToObjectSpace(h.MoveDirection)
+		local vel = (hrp.CFrame.LookVector * -move.Z) + (hrp.CFrame.RightVector * move.X) + Vector3.new(0,vertical,0)
+		bv.Velocity = (vel.Magnitude>0 and vel.Unit or vel) * (speed * 20)
+		bg.CFrame = workspace.CurrentCamera.CFrame
+	end
+end)
