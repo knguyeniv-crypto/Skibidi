@@ -1,4 +1,4 @@
--- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN 15 CAM + TP CHỐNG VĂNG + KHUNG ĐỔI TÊN CÓ NÚT X)
+-- MENU CHEAT FULL (TRANG 1-4: FLY, ESP, GOD MODE, CAM 15 SLOT, ANTI-AFK, SERVER HOP, FAKE LAG MOBILE)
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local userInputService = game:GetService("UserInputService")
@@ -233,11 +233,10 @@ curCamLabel.BorderColor3 = Color3.fromRGB(60, 60, 60)
 local nextCamBtn = CreateBtn(">", Color3.fromRGB(80, 80, 80), UDim2.new(0, 180, 0, 30), UDim2.new(0, 40, 0, 40), 18, camControlFrame)
 nextCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 
--- NÚT TELEPORT ĐẾN CAM DƯỚI ĐÁY
 local tpToCamBtn = CreateBtn("🌀 TP", Color3.fromRGB(0, 180, 255), UDim2.new(0, 220, 0, 30), UDim2.new(0, 60, 0, 40), 13, camControlFrame)
 tpToCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 
--- TRANG 3 (CAMERA PHÂN THÂN - TỐI ĐA 15 SLOT)
+-- TRANG 3 (CAMERA PHÂN THÂN)
 local page3 = Instance.new("Frame", mainFrame)
 page3.Size = UDim2.new(1, 0, 1, -35); page3.Position = UDim2.new(0, 0, 0, 35)
 page3.BackgroundTransparency = 1; page3.Visible = false
@@ -294,29 +293,19 @@ local function exitCameraView()
 	end
 end
 
--- XỬ LÝ SỰ KIỆN NÚT TP TẠI CAM (ĐÃ FIX CHỐNG VĂNG SIÊU XA)
 tpToCamBtn.MouseButton1Click:Connect(function()
 	if currentViewingCam == 0 or not cameraData[currentViewingCam] then return end
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	
 	if hrp then
-		-- 1. Xóa sạch mọi lực tác động cũ (chống văng)
 		hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 		hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		
-		-- 2. Tạm thời đóng băng nhân vật
 		hrp.Anchored = true
-		
-		-- 3. TP cao hơn vị trí Cam 3.5 studs để tránh kẹt đất
 		hrp.CFrame = cameraData[currentViewingCam].CFrame * CFrame.new(0, 3.5, 0)
-		
-		-- 4. Bỏ neo sau 0.15s để server nhận diện vị trí mới an toàn
 		task.delay(0.15, function()
 			if hrp then hrp.Anchored = false end
 		end)
 	end
-	
 	exitCameraView()
 end)
 
@@ -342,7 +331,6 @@ local function ViewCamera(index)
 	workspace.CurrentCamera.CFrame = cameraData[index].CFrame
 	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if hum then hum.PlatformStand = true end
-	
 	updateSmallCamUI(index)
 end
 
@@ -352,10 +340,7 @@ prevCamBtn.MouseButton1Click:Connect(function()
 	for i = 1, MAX_CAMS do
 		nextIdx = nextIdx - 1
 		if nextIdx < 1 then nextIdx = MAX_CAMS end
-		if cameraData[nextIdx] then
-			ViewCamera(nextIdx)
-			break
-		end
+		if cameraData[nextIdx] then ViewCamera(nextIdx); break end
 	end
 end)
 
@@ -365,18 +350,14 @@ nextCamBtn.MouseButton1Click:Connect(function()
 	for i = 1, MAX_CAMS do
 		nextIdx = nextIdx + 1
 		if nextIdx > MAX_CAMS then nextIdx = 1 end
-		if cameraData[nextIdx] then
-			ViewCamera(nextIdx)
-			break
-		end
+		if cameraData[nextIdx] then ViewCamera(nextIdx); break end
 	end
 end)
 
 for i = 1, MAX_CAMS do
 	local rowFrame = Instance.new("Frame", camScroll)
 	rowFrame.Size = UDim2.new(1, -5, 0, 26)
-	rowFrame.BackgroundTransparency = 1
-	rowFrame.Visible = false
+	rowFrame.BackgroundTransparency = 1; rowFrame.Visible = false
 	
 	local viewCamBtn = CreateBtn("Cam " .. i, Color3.fromRGB(60, 60, 60), UDim2.new(0, 0, 0, 0), UDim2.new(0, 175, 1, 0), 12, rowFrame)
 	viewCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -392,7 +373,6 @@ for i = 1, MAX_CAMS do
 		ViewCamera(i)
 	end)
 	
-	-- BẢNG ĐỔI TÊN CÓ NÚT X ĐÓNG GÓC PHẢI
 	camUIRows[i].RenameBtn.MouseButton1Click:Connect(function()
 		if not cameraData[i] then return end
 		local oldName = camUIRows[i].CustomName
@@ -401,8 +381,7 @@ for i = 1, MAX_CAMS do
 		renameFrame.Size = UDim2.new(0, 220, 0, 75)
 		renameFrame.Position = UDim2.new(0.5, -110, 0.5, -35)
 		renameFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-		renameFrame.BorderSizePixel = 2
-		renameFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+		renameFrame.BorderSizePixel = 2; renameFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
 		renameFrame.ZIndex = 5000
 		preventTouchThrough(renameFrame)
 		
@@ -410,40 +389,23 @@ for i = 1, MAX_CAMS do
 		frameCorner.CornerRadius = UDim.new(0, 6)
 		
 		local titleLbl = Instance.new("TextLabel", renameFrame)
-		titleLbl.Size = UDim2.new(1, -30, 0, 25)
-		titleLbl.Position = UDim2.new(0, 10, 0, 5)
-		titleLbl.BackgroundTransparency = 1
-		titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-		titleLbl.Text = "Đổi tên Camera"
-		titleLbl.Font = Enum.Font.SourceSansBold
-		titleLbl.TextSize = 13
-		titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-		titleLbl.ZIndex = 5001
+		titleLbl.Size = UDim2.new(1, -30, 0, 25); titleLbl.Position = UDim2.new(0, 10, 0, 5)
+		titleLbl.BackgroundTransparency = 1; titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+		titleLbl.Text = "Đổi tên Camera"; titleLbl.Font = Enum.Font.SourceSansBold; titleLbl.TextSize = 13
+		titleLbl.TextXAlignment = Enum.TextXAlignment.Left; titleLbl.ZIndex = 5001
 		
 		local closeXBtn = Instance.new("TextButton", renameFrame)
-		closeXBtn.Size = UDim2.new(0, 22, 0, 22)
-		closeXBtn.Position = UDim2.new(1, -27, 0, 5)
-		closeXBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		closeXBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		closeXBtn.Text = "X"
-		closeXBtn.Font = Enum.Font.SourceSansBold
-		closeXBtn.TextSize = 12
-		closeXBtn.BorderSizePixel = 0
-		closeXBtn.ZIndex = 5001
+		closeXBtn.Size = UDim2.new(0, 22, 0, 22); closeXBtn.Position = UDim2.new(1, -27, 0, 5)
+		closeXBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50); closeXBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeXBtn.Text = "X"; closeXBtn.Font = Enum.Font.SourceSansBold; closeXBtn.TextSize = 12; closeXBtn.BorderSizePixel = 0; closeXBtn.ZIndex = 5001
 		local xCorner = Instance.new("UICorner", closeXBtn)
 		xCorner.CornerRadius = UDim.new(0, 4)
 		
 		local promptBox = Instance.new("TextBox", renameFrame)
-		promptBox.Size = UDim2.new(1, -20, 0, 32)
-		promptBox.Position = UDim2.new(0, 10, 0, 35)
-		promptBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-		promptBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-		promptBox.Text = oldName
-		promptBox.Font = Enum.Font.SourceSansBold
-		promptBox.TextSize = 14
-		promptBox.BorderSizePixel = 1
-		promptBox.BorderColor3 = Color3.fromRGB(80, 80, 80)
-		promptBox.ZIndex = 5001
+		promptBox.Size = UDim2.new(1, -20, 0, 32); promptBox.Position = UDim2.new(0, 10, 0, 35)
+		promptBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40); promptBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+		promptBox.Text = oldName; promptBox.Font = Enum.Font.SourceSansBold; promptBox.TextSize = 14
+		promptBox.BorderSizePixel = 1; promptBox.BorderColor3 = Color3.fromRGB(80, 80, 80); promptBox.ZIndex = 5001
 		local boxCorner = Instance.new("UICorner", promptBox)
 		boxCorner.CornerRadius = UDim.new(0, 4)
 		
@@ -460,16 +422,8 @@ for i = 1, MAX_CAMS do
 			renameFrame:Destroy()
 		end
 		
-		promptBox.FocusLost:Connect(function(enterPressed)
-			if enterPressed then
-				saveAndClose()
-			end
-		end)
-		
-		closeXBtn.MouseButton1Click:Connect(function()
-			renameFrame:Destroy()
-		end)
-		
+		promptBox.FocusLost:Connect(function(enterPressed) if enterPressed then saveAndClose() end end)
+		closeXBtn.MouseButton1Click:Connect(function() renameFrame:Destroy() end)
 		promptBox:CaptureFocus()
 	end)
 	
@@ -487,33 +441,17 @@ createCloneBtn.MouseButton1Click:Connect(function()
 	local count = 0
 	for _, _ in pairs(cameraData) do count = count + 1 end
 	if count >= MAX_CAMS then return end
-	
 	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	
 	local targetSlot = nil
-	for i = 1, MAX_CAMS do
-		if not cameraData[i] then targetSlot = i; break end
-	end
-	
+	for i = 1, MAX_CAMS do if not cameraData[i] then targetSlot = i; break end end
 	if targetSlot then
 		local clonePart = Instance.new("Part")
-		clonePart.Size = Vector3.new(2, 5, 1)
-		clonePart.CFrame = hrp.CFrame
-		clonePart.Anchored = true; clonePart.CanCollide = false
-		clonePart.BrickColor = BrickColor.new("Bright blue")
-		clonePart.Material = Enum.Material.Neon
-		clonePart.Parent = workspace
-		
-		cameraData[targetSlot] = {
-			CFrame = hrp.CFrame + Vector3.new(0, 3, 0),
-			Model = clonePart
-		}
-		
-		camUIRows[targetSlot].Visible = true
-		camUIRows[targetSlot].Frame.Visible = true
-		camUIRows[targetSlot].CustomName = "Cam " .. targetSlot
-		camUIRows[targetSlot].ViewBtn.Text = "Cam " .. targetSlot
+		clonePart.Size = Vector3.new(2, 5, 1); clonePart.CFrame = hrp.CFrame; clonePart.Anchored = true; clonePart.CanCollide = false
+		clonePart.BrickColor = BrickColor.new("Bright blue"); clonePart.Material = Enum.Material.Neon; clonePart.Parent = workspace
+		cameraData[targetSlot] = {CFrame = hrp.CFrame + Vector3.new(0, 3, 0), Model = clonePart}
+		camUIRows[targetSlot].Visible = true; camUIRows[targetSlot].Frame.Visible = true
+		camUIRows[targetSlot].CustomName = "Cam " .. targetSlot; camUIRows[targetSlot].ViewBtn.Text = "Cam " .. targetSlot
 		updateCamCanvas()
 	end
 end)
@@ -522,23 +460,16 @@ clearAllCamBtn.MouseButton1Click:Connect(function()
 	exitCameraView()
 	for i = 1, MAX_CAMS do
 		if cameraData[i] and cameraData[i].Model then cameraData[i].Model:Destroy() end
-		cameraData[i] = nil
-		camUIRows[i].Visible = false
-		camUIRows[i].Frame.Visible = false
+		cameraData[i] = nil; camUIRows[i].Visible = false; camUIRows[i].Frame.Visible = false
 	end
 	updateCamCanvas()
 end)
 
--- XOAY CAM BẰNG CHẠM
 userInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if currentViewingCam > 0 and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
 		local screenWidth = workspace.CurrentCamera.ViewportSize.X
-		if input.Position.X < screenWidth / 2 then
-			activeRotationDir = 1
-		else
-			activeRotationDir = -1
-		end
+		activeRotationDir = input.Position.X < screenWidth / 2 and 1 or -1
 	end
 end)
 
@@ -551,72 +482,182 @@ end)
 runService.RenderStepped:Connect(function(dt)
 	if currentViewingCam > 0 and cameraData[currentViewingCam] then
 		workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
-		
 		if activeRotationDir ~= 0 then
 			local cf = cameraData[currentViewingCam].CFrame
 			local x, y, z = cf:ToOrientation()
 			local rotSpeed = 35 * dt * activeRotationDir
 			cameraData[currentViewingCam].CFrame = CFrame.new(cf.Position) * CFrame.fromOrientation(x, y + math.rad(rotSpeed), z)
 		end
-		
 		workspace.CurrentCamera.CFrame = cameraData[currentViewingCam].CFrame
+	end
+end)
+
+-- TRANG 4 (TIỆN ÍCH MOBILE & SERVER)
+local page4 = Instance.new("Frame", mainFrame)
+page4.Size = UDim2.new(1, 0, 1, -35); page4.Position = UDim2.new(0, 0, 0, 35)
+page4.BackgroundTransparency = 1; page4.Visible = false
+
+local serverHopBtn  = CreateBtn("Server Hop", Color3.fromRGB(0, 180, 255), UDim2.new(0, 0, 0, 0), UDim2.new(0, 160, 0, 38), 13, page4)
+local antiAfkBtn    = CreateBtn("Anti-AFK: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 160, 0, 0), UDim2.new(0, 160, 0, 38), 13, page4)
+local spectateBtn   = CreateBtn("Soi Player: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 0, 0, 40), UDim2.new(0, 160, 0, 38), 13, page4)
+local freecamMobBtn = CreateBtn("Freecam: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 160, 0, 40), UDim2.new(0, 160, 0, 38), 13, page4)
+local fakeLagBtn    = CreateBtn("Fake Lag (10 FPS): OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0, 0, 0, 82), UDim2.new(0, 320, 0, 35), 13, page4)
+serverHopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- LOGIC TRANG 4
+serverHopBtn.MouseButton1Click:Connect(function()
+	serverHopBtn.Text = "Đang tìm server..."
+	local httpService = game:GetService("HttpService")
+	local teleportService = game:GetService("TeleportService")
+	task.spawn(function()
+		local success, result = pcall(function()
+			return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/0?sortOrder=Asc&limit=100")
+		end)
+		if success then
+			local data = httpService:JSONDecode(result).data
+			for _, s in ipairs(data) do
+				if s.id ~= game.JobId and s.playing < s.maxPlayers then
+					teleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
+					return
+				end
+			end
+		end
+		serverHopBtn.Text = "Không tìm thấy!"
+		task.wait(1.5); serverHopBtn.Text = "Server Hop"
+	end)
+end)
+
+local antiAfkOn = false
+local antiAfkConnection
+antiAfkBtn.MouseButton1Click:Connect(function()
+	antiAfkOn = not antiAfkOn
+	antiAfkBtn.Text = antiAfkOn and "Anti-AFK: ON" or "Anti-AFK: OFF"
+	antiAfkBtn.BackgroundColor3 = antiAfkOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	if antiAfkOn then
+		local vu = game:GetService("VirtualUser")
+		antiAfkConnection = player.Idled:Connect(function()
+			vu:CaptureController()
+			vu:ClickButton2(Vector2.zero)
+		end)
+	else
+		if antiAfkConnection then antiAfkConnection:Disconnect() end
+	end
+end)
+
+local spectating = false
+spectateBtn.MouseButton1Click:Connect(function()
+	if not targetPlayer or not targetPlayer.Character then
+		spectateBtn.Text = "Chưa chọn Player!"
+		task.wait(1)
+		spectateBtn.Text = spectating and "Soi Player: ON" or "Soi Player: OFF"
+		return
+	end
+	spectating = not spectating
+	spectateBtn.Text = spectating and "Soi Player: ON" or "Soi Player: OFF"
+	spectateBtn.BackgroundColor3 = spectating and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	local cam = workspace.CurrentCamera
+	if spectating then
+		local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if targetHum then cam.CameraSubject = targetHum end
+	else
+		local myHum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if myHum then cam.CameraSubject = myHum end
+	end
+end)
+
+local freecamMobOn = false
+local freecamMobConn
+freecamMobBtn.MouseButton1Click:Connect(function()
+	freecamMobOn = not freecamMobOn
+	freecamMobBtn.Text = freecamMobOn and "Freecam: ON" or "Freecam: OFF"
+	freecamMobBtn.BackgroundColor3 = freecamMobOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	local cam = workspace.CurrentCamera
+	if freecamMobOn then
+		cam.CameraType = Enum.CameraType.Scriptable
+		freecamMobConn = runService.RenderStepped:Connect(function(dt)
+			if freecamMobOn then cam.CFrame = cam.CFrame * CFrame.new(0, 0, -15 * dt) end
+		end)
+	else
+		if freecamMobConn then freecamMobConn:Disconnect() end
+		cam.CameraType = Enum.CameraType.Custom
+		local myHum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if myHum then cam.CameraSubject = myHum end
+	end
+end)
+
+local fakeLagOn = false
+local origSpeed = 16
+fakeLagBtn.MouseButton1Click:Connect(function()
+	fakeLagOn = not fakeLagOn
+	fakeLagBtn.Text = fakeLagOn and "Fake Lag (10 FPS): ON" or "Fake Lag (10 FPS): OFF"
+	fakeLagBtn.BackgroundColor3 = fakeLagOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if fakeLagOn then
+		if hum then origSpeed = hum.WalkSpeed; hum.WalkSpeed = 8 end
+		task.spawn(function()
+			while fakeLagOn do
+				local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					hrp.Anchored = true
+					task.wait(0.07)
+					hrp.Anchored = false
+				end
+				task.wait(0.03)
+			end
+		end)
+	else
+		if hum then hum.WalkSpeed = origSpeed end
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if hrp then hrp.Anchored = false end
 	end
 end)
 
 -- CHUYỂN TRANG
 local currentPage = 1
-local maxPages = 3
+local maxPages = 4
 local function updatePage()
 	page1.Visible = (currentPage == 1)
 	page2.Visible = (currentPage == 2)
 	page3.Visible = (currentPage == 3)
+	page4.Visible = (currentPage == 4)
 	pageLabel.Text = "Trang " .. currentPage
 	playerScroll.Visible = false
 end
 nextBtn.MouseButton1Click:Connect(function() currentPage = currentPage == maxPages and 1 or currentPage + 1; updatePage() end)
 prevBtn.MouseButton1Click:Connect(function() currentPage = currentPage == 1 and maxPages or currentPage - 1; updatePage() end)
 
--- GOD MODE
+-- GOD MODE LOGIC
 local godModeOn = false
 local wsOn = false
-
 godModeBtn.MouseButton1Click:Connect(function()
 	godModeOn = not godModeOn
 	godModeBtn.Text = godModeOn and "God Mode: ON" or "God Mode: OFF"
 	godModeBtn.BackgroundColor3 = godModeOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
-	
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	
 	if godModeOn then
 		if hum then
 			if hum.MaxHealth < 9e18 then savedMaxHealth = hum.MaxHealth end
 			savedWalkSpeed = hum.WalkSpeed
 		end
-		
 		godModeConn = runService.Heartbeat:Connect(function()
-			local c = player.Character
-			local h = c and c:FindFirstChildOfClass("Humanoid")
-			if h then
-				h:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-				h.MaxHealth = 9e18
-				h.Health = 9e18
-			end
+			local c = player.Character; local h = c and c:FindFirstChildOfClass("Humanoid")
+			if h then h:SetStateEnabled(Enum.HumanoidStateType.Dead, false); h.MaxHealth = 9e18; h.Health = 9e18 end
 		end)
 	else
 		if godModeConn then godModeConn:Disconnect(); godModeConn = nil end
 		if hum then
 			hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
 			task.spawn(function()
-				hum.MaxHealth = savedMaxHealth
-				hum.Health = savedMaxHealth
+				hum.MaxHealth = savedMaxHealth; hum.Health = savedMaxHealth
 				if not wsOn then hum.WalkSpeed = savedWalkSpeed end
 			end)
 		end
 	end
 end)
 
--- CÁC CHỨC NĂNG KHÁC
+-- CÁC CHỨC NĂNG KHÁC (FIX LAG, NOCLIP, INF JUMP, PLAYER LIST, ESP, SPEED/JUMP, FLY)
 local fixLagOn = false
 fixLagBtn.MouseButton1Click:Connect(function()
 	fixLagOn = not fixLagOn
@@ -784,14 +825,11 @@ runService.RenderStepped:Connect(function()
 	local char = player.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	local humanoid = char and char:FindFirstChild("Humanoid")
-	
 	if flying and hrp and humanoid and bv and bg then
 		local cam = workspace.CurrentCamera
 		local move = humanoid.MoveDirection
 		local localMove = hrp.CFrame:VectorToObjectSpace(move)
-		local velocity =
-			(hrp.CFrame.LookVector * -localMove.Z) +
-			(hrp.CFrame.RightVector * localMove.X)
+		local velocity = (hrp.CFrame.LookVector * -localMove.Z) + (hrp.CFrame.RightVector * localMove.X)
 		velocity += Vector3.new(0, vertical, 0)
 		if velocity.Magnitude > 0 then velocity = velocity.Unit end
 		bv.Velocity = velocity * (speed * 20)
