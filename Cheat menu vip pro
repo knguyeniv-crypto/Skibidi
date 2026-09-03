@@ -1,0 +1,720 @@
+-- MENU CHEAT (ĐÃ TÍCH HỢP FLY, GIAO DIỆN CHUYỂN CAM & XOAY CAM BẰNG CHẠM)
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
+local tweenService = game:GetService("TweenService")
+local lighting = game:GetService("Lighting")
+local workspace = game:GetService("Workspace")
+local terrain = workspace:WaitForChild("Terrain")
+local player = players.LocalPlayer
+
+local getHui = gethui or function()
+	local coreGui = game:GetService("CoreGui")
+	return coreGui:FindFirstChild("RobloxGui") or coreGui
+end
+
+local targetParent = player:WaitForChild("PlayerGui")
+pcall(function() targetParent = getHui() end)
+
+local oldGui = targetParent:FindFirstChild("UniversalCheatMenu") or player.PlayerGui:FindFirstChild("UniversalCheatMenu")
+if oldGui then oldGui:Destroy() end
+
+local BLOCK_COLOR = Color3.fromRGB(128, 128, 128)
+local removedSkyInstances = {}
+local removedEffects = {}
+local originalPartData = {}
+local oldGlobalShadows, oldBrightness, oldFogEnd
+local fixLagConnection
+local noclipConnection, godModeConn, infJumpConnection
+
+local savedMaxHealth = 100
+local savedWalkSpeed = 16
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UniversalCheatMenu"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 2147483647
+screenGui.IgnoreGuiInset = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = targetParent
+
+-- Chặn click xuyên qua UI chính
+local function preventTouchThrough(frame)
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			input.UserInputService:GetMouseLocation()
+		end
+	end)
+end
+
+-- 1. Nút Icon Tròn
+local iconButton = Instance.new("TextButton")
+iconButton.Name = "MenuIcon"
+iconButton.Size = UDim2.new(0, 50, 0, 50)
+iconButton.Position = UDim2.new(0, 20, 0, 150)
+iconButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+iconButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+iconButton.TextSize = 22
+iconButton.Font = Enum.Font.SourceSansBold
+iconButton.Text = "⚙️"
+iconButton.Parent = screenGui
+
+local iconCorner = Instance.new("UICorner")
+iconCorner.CornerRadius = UDim.new(1, 0)
+iconCorner.Parent = iconButton
+local iconStroke = Instance.new("UIStroke")
+iconStroke.Color = Color3.fromRGB(150, 150, 150)
+iconStroke.Thickness = 2
+iconStroke.Parent = iconButton
+
+-- 2. Khung Menu Chính
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 320, 0, 235)
+mainFrame.Position = UDim2.new(0, 80, 0, 150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+preventTouchThrough(mainFrame)
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 6)
+frameCorner.Parent = mainFrame
+
+local dragging, dragStart, startPos
+iconButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true; dragStart = input.Position; startPos = iconButton.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+userInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		iconButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		mainFrame.Position = UDim2.new(iconButton.Position.X.Scale, iconButton.Position.X.Offset + 60, iconButton.Position.Y.Scale, iconButton.Position.Y.Offset)
+	end
+end)
+
+local menuOpen = false
+iconButton.MouseButton1Click:Connect(function()
+	menuOpen = not menuOpen
+	tweenService:Create(iconButton, TweenInfo.new(0.3), {Rotation = iconButton.Rotation + 360}):Play()
+	mainFrame.Visible = menuOpen
+end)
+
+-- ==================== THANH TOP BAR ====================
+local topBar = Instance.new("Frame", mainFrame)
+topBar.Size = UDim2.new(1, 0, 0, 35)
+topBar.BackgroundTransparency = 1
+
+local fpsLabel = Instance.new("TextLabel", topBar)
+fpsLabel.Size = UDim2.new(0, 75, 1, 0)
+fpsLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+fpsLabel.Font = Enum.Font.SourceSansBold
+fpsLabel.TextSize = 13; fpsLabel.Text = "FPS: 60"; fpsLabel.BorderSizePixel = 2
+
+local frames, lastTick = 0, tick()
+runService.RenderStepped:Connect(function()
+	frames = frames + 1
+	if tick() - lastTick >= 1 then fpsLabel.Text = "FPS: " .. frames; frames = 0; lastTick = tick() end
+end)
+
+local title = Instance.new("TextLabel", topBar)
+title.Size = UDim2.new(0, 95, 1, 0); title.Position = UDim2.new(0, 75, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(255, 0, 255); title.TextColor3 = Color3.fromRGB(0, 0, 0)
+title.Font = Enum.Font.SourceSansBold; title.TextSize = 12; title.Text = "CHEAT MENU"; title.BorderSizePixel = 2
+
+local prevBtn = Instance.new("TextButton", topBar)
+prevBtn.Size = UDim2.new(0, 25, 1, 0); prevBtn.Position = UDim2.new(0, 170, 0, 0)
+prevBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0); prevBtn.Text = "<"; prevBtn.Font = Enum.Font.SourceSansBold; prevBtn.TextSize = 15; prevBtn.BorderSizePixel = 2
+
+local pageLabel = Instance.new("TextLabel", topBar)
+pageLabel.Size = UDim2.new(0, 75, 1, 0); pageLabel.Position = UDim2.new(0, 195, 0, 0)
+pageLabel.BackgroundColor3 = Color3.fromRGB(255, 200, 0); pageLabel.Text = "Trang 1"; pageLabel.Font = Enum.Font.SourceSansBold; pageLabel.TextSize = 12; pageLabel.BorderSizePixel = 2
+
+local nextBtn = Instance.new("TextButton", topBar)
+nextBtn.Size = UDim2.new(0, 50, 1, 0); nextBtn.Position = UDim2.new(0, 270, 0, 0)
+nextBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0); nextBtn.Text = ">"; nextBtn.Font = Enum.Font.SourceSansBold; nextBtn.TextSize = 15; nextBtn.BorderSizePixel = 2
+
+local function CreateBtn(t, c, pos, size, ts, parent)
+	local b = Instance.new("TextButton", parent)
+	b.Text = t; b.BackgroundColor3 = c; b.Position = pos; b.Size = size
+	b.TextSize = ts or 13; b.Font = Enum.Font.SourceSansBold; b.TextColor3 = Color3.fromRGB(0,0,0)
+	b.BorderSizePixel = 2
+	return b
+end
+
+-- ==================== TRANG 1 ====================
+local page1 = Instance.new("Frame", mainFrame)
+page1.Size = UDim2.new(1, 0, 1, -35); page1.Position = UDim2.new(0, 0, 0, 35)
+page1.BackgroundTransparency = 1; page1.Visible = true
+
+local noclipBtn = CreateBtn("Noclip: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,0,0,0), UDim2.new(0,160,0,38), 13, page1)
+local fixLagBtn = CreateBtn("Fix Lag: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,160,0,0), UDim2.new(0,160,0,38), 13, page1)
+local infJumpBtn = CreateBtn("Inf Jump: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,0,0,40), UDim2.new(0,160,0,38), 13, page1)
+local godModeBtn = CreateBtn("God Mode: OFF", Color3.fromRGB(255, 80, 80), UDim2.new(0,160,0,40), UDim2.new(0,160,0,38), 13, page1)
+
+local upBtn    = CreateBtn("UP", Color3.fromRGB(100, 255, 200), UDim2.new(0,0,0,82), UDim2.new(0,80,0,35), 13, page1)
+local plusBtn  = CreateBtn("+", Color3.fromRGB(80, 120, 255), UDim2.new(0,80,0,82), UDim2.new(0,80,0,35), 15, page1)
+local speedLabel = Instance.new("TextLabel", page1)
+speedLabel.Size = UDim2.new(0,160,0,35); speedLabel.Position = UDim2.new(0,160,0,82)
+speedLabel.BackgroundColor3 = Color3.fromRGB(255,100,0); speedLabel.Text = "Speed: 1"
+speedLabel.Font = Enum.Font.SourceSansBold; speedLabel.TextSize = 13; speedLabel.BorderSizePixel = 2
+local downBtn  = CreateBtn("DOWN", Color3.fromRGB(255, 255, 0), UDim2.new(0,0,0,119), UDim2.new(0,80,0,35), 11, page1)
+local minusBtn = CreateBtn("-", Color3.fromRGB(100, 255, 255), UDim2.new(0,80,0,119), UDim2.new(0,80,0,35), 15, page1)
+local flyBtn   = CreateBtn("FLY", Color3.fromRGB(255, 255, 0), UDim2.new(0,160,0,119), UDim2.new(0,160,0,35), 13, page1)
+
+-- ==================== TRANG 2 ====================
+local page2 = Instance.new("Frame", mainFrame)
+page2.Size = UDim2.new(1, 0, 1, -35); page2.Position = UDim2.new(0, 0, 0, 35)
+page2.BackgroundTransparency = 1; page2.Visible = false
+
+local walkSpeedBtn = CreateBtn("Speed: OFF", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,0), UDim2.new(0,160,0,38), 13, page2)
+local walkSpeedInput = Instance.new("TextBox", page2)
+walkSpeedInput.Size = UDim2.new(0,160,0,38); walkSpeedInput.Position = UDim2.new(0,160,0,0)
+walkSpeedInput.BackgroundColor3 = Color3.fromRGB(200,200,200); walkSpeedInput.Text = "50"; walkSpeedInput.Font = Enum.Font.SourceSansBold; walkSpeedInput.TextSize = 13; walkSpeedInput.BorderSizePixel = 2
+
+local jumpPowerBtn = CreateBtn("Jump: OFF", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,40), UDim2.new(0,160,0,38), 13, page2)
+local jumpPowerInput = Instance.new("TextBox", page2)
+jumpPowerInput.Size = UDim2.new(0,160,0,38); jumpPowerInput.Position = UDim2.new(0,160,0,40)
+jumpPowerInput.BackgroundColor3 = Color3.fromRGB(200,200,200); jumpPowerInput.Text = "100"; jumpPowerInput.Font = Enum.Font.SourceSansBold; jumpPowerInput.TextSize = 13; jumpPowerInput.BorderSizePixel = 2
+
+local espBtn = CreateBtn("ESP: OFF", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,82), UDim2.new(0,320,0,35), 13, page2)
+local tpBtn = CreateBtn("Teleport", Color3.fromRGB(255,80,80), UDim2.new(0,0,0,119), UDim2.new(0,160,0,35), 13, page2)
+local selectPlayerBtn = CreateBtn("Chọn Player ▼", Color3.fromRGB(200,200,200), UDim2.new(0,160,0,119), UDim2.new(0,160,0,35), 12, page2)
+
+local playerScroll = Instance.new("ScrollingFrame", page2)
+playerScroll.Size = UDim2.new(0, 160, 0, 100); playerScroll.Position = UDim2.new(0, 160, 0, 19)
+playerScroll.BackgroundColor3 = Color3.fromRGB(40,40,40); playerScroll.BorderSizePixel = 2; playerScroll.ScrollBarThickness = 5; playerScroll.ZIndex = 100; playerScroll.Visible = false
+preventTouchThrough(playerScroll)
+local listLayout = Instance.new("UIListLayout", playerScroll)
+
+-- ==================== BẢNG ĐIỀU KHIỂN CAM DƯỚI ĐÁY (MỚI) ====================
+local camControlFrame = Instance.new("Frame", screenGui)
+camControlFrame.Size = UDim2.new(0, 220, 0, 70)
+camControlFrame.Position = UDim2.new(0.5, -110, 1, -120) -- Trôi lơ lửng dưới đáy
+camControlFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+camControlFrame.BorderSizePixel = 2
+camControlFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+camControlFrame.Visible = false
+preventTouchThrough(camControlFrame)
+
+local camTopLabel = Instance.new("TextLabel", camControlFrame)
+camTopLabel.Size = UDim2.new(1, 0, 0, 30)
+camTopLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+camTopLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+camTopLabel.Font = Enum.Font.SourceSansBold
+camTopLabel.TextSize = 14
+camTopLabel.Text = "Đang xem: Cam Name"
+camTopLabel.BorderSizePixel = 1
+camTopLabel.BorderColor3 = Color3.fromRGB(60, 60, 60)
+
+local prevCamBtn = CreateBtn("<", Color3.fromRGB(80, 80, 80), UDim2.new(0, 0, 0, 30), UDim2.new(0, 40, 0, 40), 18, camControlFrame)
+prevCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local curCamLabel = Instance.new("TextLabel", camControlFrame)
+curCamLabel.Size = UDim2.new(0, 140, 0, 40)
+curCamLabel.Position = UDim2.new(0, 40, 0, 30)
+curCamLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+curCamLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+curCamLabel.Font = Enum.Font.SourceSansBold
+curCamLabel.TextSize = 14
+curCamLabel.Text = "Cam Name"
+curCamLabel.BorderSizePixel = 1
+curCamLabel.BorderColor3 = Color3.fromRGB(60, 60, 60)
+
+local nextCamBtn = CreateBtn(">", Color3.fromRGB(80, 80, 80), UDim2.new(0, 180, 0, 30), UDim2.new(0, 40, 0, 40), 18, camControlFrame)
+nextCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- ==================== TRANG 3 (CAMERA PHÂN THÂN) ====================
+local page3 = Instance.new("Frame", mainFrame)
+page3.Size = UDim2.new(1, 0, 1, -35); page3.Position = UDim2.new(0, 0, 0, 35)
+page3.BackgroundTransparency = 1; page3.Visible = false
+
+local createCloneBtn = CreateBtn("+ Đặt Phân Thân", Color3.fromRGB(0, 180, 255), UDim2.new(0, 0, 0, 0), UDim2.new(0, 212, 0, 30), 11, page3)
+local clearAllCamBtn = CreateBtn("🗑️ Xóa Tất Cả", Color3.fromRGB(255, 80, 80), UDim2.new(0, 214, 0, 0), UDim2.new(0, 105, 0, 30), 11, page3)
+
+local camScroll = Instance.new("ScrollingFrame", page3)
+camScroll.Size = UDim2.new(1, 0, 0, 165); camScroll.Position = UDim2.new(0, 0, 0, 35)
+camScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 25); camScroll.BorderSizePixel = 2; camScroll.ScrollBarThickness = 5
+preventTouchThrough(camScroll)
+local camListLayout = Instance.new("UIListLayout", camScroll)
+camListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local cameraData = {}
+local currentViewingCam = 0
+local camUIRows = {}
+local activeRotationDir = 0 -- Biến kiểm soát hướng xoay camera (-1 phải, 1 trái)
+
+local function updateCamCanvas()
+	local totalHeight = 0
+	for _, row in pairs(camUIRows) do
+		if row.Visible then totalHeight = totalHeight + 28 end
+	end
+	camScroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+end
+
+-- Hàm Update bảng UI Camera nhỏ
+local function updateSmallCamUI(idx)
+	if idx == 0 then
+		camControlFrame.Visible = false
+		return
+	end
+	camControlFrame.Visible = true
+	local name = camUIRows[idx].CustomName
+	camTopLabel.Text = "Đang xem: " .. name
+	curCamLabel.Text = name
+end
+
+-- Hàm Thoát Camera
+local function exitCameraView()
+	currentViewingCam = 0
+	activeRotationDir = 0
+	camControlFrame.Visible = false
+	workspace.CurrentCamera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+	
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.PlatformStand = false end
+	
+	for i = 1, 8 do
+		if camUIRows[i].Visible then
+			camUIRows[i].ViewBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			camUIRows[i].ViewBtn.Text = camUIRows[i].CustomName
+		end
+	end
+end
+
+-- Hàm Gọi Camera (Xử lý mượt mà chuyển cam)
+local function ViewCamera(index)
+	if currentViewingCam == index then
+		exitCameraView()
+		return
+	end
+	currentViewingCam = index
+	activeRotationDir = 0
+	for j = 1, 8 do
+		if camUIRows[j].Visible then
+			if j == index then
+				camUIRows[j].ViewBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+				camUIRows[j].ViewBtn.Text = camUIRows[j].CustomName .. " (Đang xem)"
+			else
+				camUIRows[j].ViewBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+				camUIRows[j].ViewBtn.Text = camUIRows[j].CustomName
+			end
+		end
+	end
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+	workspace.CurrentCamera.CFrame = cameraData[index].CFrame
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.PlatformStand = true end
+	
+	updateSmallCamUI(index)
+end
+
+-- Chức năng cho nút < và > của Cam Control UI
+prevCamBtn.MouseButton1Click:Connect(function()
+	if currentViewingCam == 0 then return end
+	local nextIdx = currentViewingCam
+	for i = 1, 8 do
+		nextIdx = nextIdx - 1
+		if nextIdx < 1 then nextIdx = 8 end
+		if cameraData[nextIdx] then
+			ViewCamera(nextIdx)
+			break
+		end
+	end
+end)
+
+nextCamBtn.MouseButton1Click:Connect(function()
+	if currentViewingCam == 0 then return end
+	local nextIdx = currentViewingCam
+	for i = 1, 8 do
+		nextIdx = nextIdx + 1
+		if nextIdx > 8 then nextIdx = 1 end
+		if cameraData[nextIdx] then
+			ViewCamera(nextIdx)
+			break
+		end
+	end
+end)
+
+for i = 1, 8 do
+	local rowFrame = Instance.new("Frame", camScroll)
+	rowFrame.Size = UDim2.new(1, -5, 0, 26)
+	rowFrame.BackgroundTransparency = 1
+	rowFrame.Visible = false
+	
+	local viewCamBtn = CreateBtn("Cam " .. i, Color3.fromRGB(60, 60, 60), UDim2.new(0, 0, 0, 0), UDim2.new(0, 175, 1, 0), 12, rowFrame)
+	viewCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	local renameCamBtn = CreateBtn("✏️", Color3.fromRGB(200, 170, 0), UDim2.new(0, 178, 0, 0), UDim2.new(0, 38, 1, 0), 12, rowFrame)
+	local delCamBtn = CreateBtn("🗑️", Color3.fromRGB(255, 80, 80), UDim2.new(0, 219, 0, 0), UDim2.new(0, 91, 1, 0), 12, rowFrame)
+	
+	camUIRows[i] = {Frame = rowFrame, ViewBtn = viewCamBtn, RenameBtn = renameCamBtn, DelBtn = delCamBtn, Visible = false, CustomName = "Cam " .. i}
+end
+
+for i = 1, 8 do
+	camUIRows[i].ViewBtn.MouseButton1Click:Connect(function()
+		if not cameraData[i] then return end
+		ViewCamera(i)
+	end)
+	
+	camUIRows[i].RenameBtn.MouseButton1Click:Connect(function()
+		if not cameraData[i] then return end
+		local oldName = camUIRows[i].CustomName
+		local promptBox = Instance.new("TextBox", screenGui)
+		promptBox.Size = UDim2.new(0, 200, 0, 40)
+		promptBox.Position = UDim2.new(0.5, -100, 0.5, -20)
+		promptBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		promptBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+		promptBox.Text = oldName
+		promptBox.Font = Enum.Font.SourceSansBold
+		promptBox.TextSize = 14
+		promptBox.BorderSizePixel = 2
+		promptBox.ZIndex = 5000
+		promptBox.FocusLost:Connect(function(enterPressed)
+			if enterPressed and promptBox.Text ~= "" then
+				camUIRows[i].CustomName = promptBox.Text
+				if currentViewingCam == i then
+					camUIRows[i].ViewBtn.Text = promptBox.Text .. " (Đang xem)"
+					updateSmallCamUI(i)
+				else
+					camUIRows[i].ViewBtn.Text = promptBox.Text
+				end
+			end
+			promptBox:Destroy()
+		end)
+	end)
+	
+	camUIRows[i].DelBtn.MouseButton1Click:Connect(function()
+		if currentViewingCam == i then exitCameraView() end
+		if cameraData[i] and cameraData[i].Model then cameraData[i].Model:Destroy() end
+		cameraData[i] = nil
+		camUIRows[i].Visible = false
+		camUIRows[i].Frame.Visible = false
+		updateCamCanvas()
+	end)
+end
+
+createCloneBtn.MouseButton1Click:Connect(function()
+	local count = 0
+	for _, _ in pairs(cameraData) do count = count + 1 end
+	if count >= 8 then return end
+	
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	local targetSlot = nil
+	for i = 1, 8 do
+		if not cameraData[i] then targetSlot = i; break end
+	end
+	
+	if targetSlot then
+		local clonePart = Instance.new("Part")
+		clonePart.Size = Vector3.new(2, 5, 1)
+		clonePart.CFrame = hrp.CFrame
+		clonePart.Anchored = true; clonePart.CanCollide = false
+		clonePart.BrickColor = BrickColor.new("Bright blue")
+		clonePart.Material = Enum.Material.Neon
+		clonePart.Parent = workspace
+		
+		cameraData[targetSlot] = {
+			CFrame = hrp.CFrame + Vector3.new(0, 3, 0),
+			Model = clonePart
+		}
+		
+		camUIRows[targetSlot].Visible = true
+		camUIRows[targetSlot].Frame.Visible = true
+		camUIRows[targetSlot].CustomName = "Cam " .. targetSlot
+		camUIRows[targetSlot].ViewBtn.Text = "Cam " .. targetSlot
+		updateCamCanvas()
+	end
+end)
+
+clearAllCamBtn.MouseButton1Click:Connect(function()
+	exitCameraView()
+	for i = 1, 8 do
+		if cameraData[i] and cameraData[i].Model then cameraData[i].Model:Destroy() end
+		cameraData[i] = nil
+		camUIRows[i].Visible = false
+		camUIRows[i].Frame.Visible = false
+	end
+	updateCamCanvas()
+end)
+
+-- ==================== LOGIC NHẬN DIỆN CHẠM MÀN HÌNH XOAY CAM ====================
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end -- Nếu người chơi click trúng Nút UI (Ví dụ nút D-pad, Jump), bỏ qua
+	if currentViewingCam > 0 and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+		local screenWidth = workspace.CurrentCamera.ViewportSize.X
+		if input.Position.X < screenWidth / 2 then
+			activeRotationDir = 1 -- Click trái -> Xoay trái
+		else
+			activeRotationDir = -1 -- Click phải -> Xoay phải
+		end
+	end
+end)
+
+userInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		activeRotationDir = 0 -- Ngừng chạm -> Ngừng xoay
+	end
+end)
+
+-- LOGIC RENDER CAMERA & TÍNH TOÁN XOAY
+runService.RenderStepped:Connect(function(dt)
+	if currentViewingCam > 0 and cameraData[currentViewingCam] then
+		workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+		
+		-- Logic xoay Cam mượt mà
+		if activeRotationDir ~= 0 then
+			local cf = cameraData[currentViewingCam].CFrame
+			local x, y, z = cf:ToOrientation()
+			local rotSpeed = 35 * dt * activeRotationDir -- Xoay 35 độ mỗi giây, rất chậm & mượt
+			cameraData[currentViewingCam].CFrame = CFrame.new(cf.Position) * CFrame.fromOrientation(x, y + math.rad(rotSpeed), z)
+		end
+		
+		workspace.CurrentCamera.CFrame = cameraData[currentViewingCam].CFrame
+	end
+end)
+
+-- ==================== CHUYỂN TRANG ====================
+local currentPage = 1
+local maxPages = 3
+local function updatePage()
+	page1.Visible = (currentPage == 1)
+	page2.Visible = (currentPage == 2)
+	page3.Visible = (currentPage == 3)
+	pageLabel.Text = "Trang " .. currentPage
+	playerScroll.Visible = false
+end
+nextBtn.MouseButton1Click:Connect(function() currentPage = currentPage == maxPages and 1 or currentPage + 1; updatePage() end)
+prevBtn.MouseButton1Click:Connect(function() currentPage = currentPage == 1 and maxPages or currentPage - 1; updatePage() end)
+
+-- ==================== LOGIC GOD MODE ====================
+local godModeOn = false
+local wsOn = false
+
+godModeBtn.MouseButton1Click:Connect(function()
+	godModeOn = not godModeOn
+	godModeBtn.Text = godModeOn and "God Mode: ON" or "God Mode: OFF"
+	godModeBtn.BackgroundColor3 = godModeOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	
+	if godModeOn then
+		if hum then
+			if hum.MaxHealth < 9e18 then savedMaxHealth = hum.MaxHealth end
+			savedWalkSpeed = hum.WalkSpeed
+		end
+		
+		godModeConn = runService.Heartbeat:Connect(function()
+			local c = player.Character
+			local h = c and c:FindFirstChildOfClass("Humanoid")
+			if h then
+				h:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+				h.MaxHealth = 9e18
+				h.Health = 9e18
+			end
+		end)
+	else
+		if godModeConn then godModeConn:Disconnect(); godModeConn = nil end
+		if hum then
+			hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+			task.spawn(function()
+				hum.MaxHealth = savedMaxHealth
+				hum.Health = savedMaxHealth
+				if not wsOn then hum.WalkSpeed = savedWalkSpeed end
+			end)
+		end
+	end
+end)
+
+-- ==================== CÁC CHỨC NĂNG KHÁC ====================
+local fixLagOn = false
+fixLagBtn.MouseButton1Click:Connect(function()
+	fixLagOn = not fixLagOn
+	if fixLagOn then
+		fixLagBtn.Text = "Fix Lag: ON"; fixLagBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		oldGlobalShadows = lighting.GlobalShadows; oldBrightness = lighting.Brightness; oldFogEnd = lighting.FogEnd
+		lighting.GlobalShadows = false; lighting.Brightness = 1; lighting.FogEnd = 9e9
+		table.clear(removedSkyInstances)
+		for _, v in pairs(lighting:GetChildren()) do if v:IsA("Sky") then table.insert(removedSkyInstances, v); v.Parent = nil end end
+		table.clear(removedEffects)
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("PostEffect") then
+				table.insert(removedEffects, {Instance = v, Parent = v.Parent}); v.Parent = nil
+			elseif v:IsA("BasePart") and v ~= terrain then
+				if not originalPartData[v] then originalPartData[v] = {Material = v.Material, Color = v.Color, Reflectance = v.Reflectance, CastShadow = v.CastShadow} end
+				v.Material = Enum.Material.SmoothPlastic; v.Reflectance = 0; v.CastShadow = false; v.Color = BLOCK_COLOR
+			end
+		end
+	else
+		fixLagBtn.Text = "Fix Lag: OFF"; fixLagBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+		lighting.GlobalShadows = oldGlobalShadows; lighting.Brightness = oldBrightness; lighting.FogEnd = oldFogEnd
+		for _, sky in ipairs(removedSkyInstances) do sky.Parent = lighting end
+		for _, data in ipairs(removedEffects) do if data.Instance and data.Parent then data.Instance.Parent = data.Parent end end
+		table.clear(removedEffects)
+		for part, data in pairs(originalPartData) do if part and part.Parent then part.Material = data.Material; part.Color = data.Color; part.Reflectance = data.Reflectance; part.CastShadow = data.CastShadow end end
+		table.clear(originalPartData)
+	end
+end)
+
+local noclipOn = false
+noclipBtn.MouseButton1Click:Connect(function()
+	noclipOn = not noclipOn; noclipBtn.Text = noclipOn and "Noclip: ON" or "Noclip: OFF"
+	noclipBtn.BackgroundColor3 = noclipOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	if noclipOn then
+		noclipConnection = runService.Stepped:Connect(function()
+			if player.Character then for _, v in pairs(player.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+		end)
+	elseif noclipConnection then noclipConnection:Disconnect() end
+end)
+
+infJumpBtn.MouseButton1Click:Connect(function()
+	infJumpOn = not infJumpOn; infJumpBtn.Text = infJumpOn and "Inf Jump: ON" or "Inf Jump: OFF"
+	infJumpBtn.BackgroundColor3 = infJumpOn and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 80, 80)
+	if infJumpOn then
+		infJumpConnection = userInputService.JumpRequest:Connect(function()
+			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+			if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+		end)
+	elseif infJumpConnection then infJumpConnection:Disconnect() end
+end)
+
+local targetPlayer = nil
+local function RefreshList()
+	for _, child in pairs(playerScroll:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+	local yCount = 0
+	for _, plr in pairs(players:GetPlayers()) do
+		if plr ~= player then
+			local btn = Instance.new("TextButton", playerScroll)
+			btn.Size = UDim2.new(1, 0, 0, 25); btn.BackgroundColor3 = Color3.fromRGB(60,60,60); btn.TextColor3 = Color3.fromRGB(255,255,255)
+			btn.Text = plr.Name; btn.Font = Enum.Font.SourceSans; btn.TextSize = 12
+			btn.MouseButton1Click:Connect(function() targetPlayer = plr; selectPlayerBtn.Text = plr.Name; playerScroll.Visible = false end)
+			yCount = yCount + 25
+		end
+	end
+	playerScroll.CanvasSize = UDim2.new(0, 0, 0, yCount)
+end
+selectPlayerBtn.MouseButton1Click:Connect(function() playerScroll.Visible = not playerScroll.Visible; if playerScroll.Visible then RefreshList() end end)
+tpBtn.MouseButton1Click:Connect(function()
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local targetHrp = targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if hrp and targetHrp then
+		tpBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0); hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
+		task.wait(0.2); tpBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+	end
+end)
+
+local espOn, espObjects = false, {}
+local function createESP(plr)
+	if plr == player or espObjects[plr] then return end
+	local hl = Instance.new("Highlight"); hl.FillColor = Color3.fromRGB(255,0,0); hl.FillTransparency = 0.5
+	local bill = Instance.new("BillboardGui"); bill.Size = UDim2.new(0,200,0,50); bill.AlwaysOnTop = true
+	local txt = Instance.new("TextLabel", bill); txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1
+	txt.TextSize = 13; txt.Font = Enum.Font.SourceSansBold; txt.TextColor3 = Color3.fromRGB(0,255,0); txt.TextStrokeTransparency = 0
+	espObjects[plr] = {Highlight = hl, Billboard = bill, Label = txt}
+end
+espBtn.MouseButton1Click:Connect(function()
+	espOn = not espOn; espBtn.Text = espOn and "ESP: ON" or "ESP: OFF"; espBtn.BackgroundColor3 = espOn and Color3.fromRGB(0,200,0) or Color3.fromRGB(255,80,80)
+	if espOn then for _, p in pairs(players:GetPlayers()) do createESP(p) end else for p, obj in pairs(espObjects) do obj.Highlight:Destroy(); obj.Billboard:Destroy() end; table.clear(espObjects) end
+end)
+runService.RenderStepped:Connect(function()
+	if not espOn then return end
+	local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	for plr, obj in pairs(espObjects) do
+		local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+		if root and myRoot then
+			obj.Highlight.Parent = plr.Character; obj.Billboard.Parent = root
+			obj.Label.Text = plr.Name .. "\n[" .. math.floor((myRoot.Position - root.Position).Magnitude) .. " bước]"
+		else obj.Highlight.Parent = nil; obj.Billboard.Parent = nil end
+	end
+end)
+
+local jpOn, wsVal, jpVal = false, 50, 100
+walkSpeedInput.FocusLost:Connect(function() wsVal = tonumber(walkSpeedInput.Text) or 16 end)
+jumpPowerInput.FocusLost:Connect(function() jpVal = tonumber(jumpPowerInput.Text) or 50 end)
+walkSpeedBtn.MouseButton1Click:Connect(function() wsOn = not wsOn; walkSpeedBtn.Text = wsOn and "Speed: ON" or "Speed: OFF"; walkSpeedBtn.BackgroundColor3 = wsOn and Color3.fromRGB(0,200,0) or Color3.fromRGB(255,80,80) end)
+jumpPowerBtn.MouseButton1Click:Connect(function() jpOn = not jpOn; jumpPowerBtn.Text = jpOn and "Jump: ON" or "Jump: OFF"; jumpPowerBtn.BackgroundColor3 = jpOn and Color3.fromRGB(0,200,0) or Color3.fromRGB(255,80,80) end)
+runService.Heartbeat:Connect(function()
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then 
+		if wsOn then hum.WalkSpeed = wsVal end 
+		if jpOn then hum.UseJumpPower = true; hum.JumpPower = jpVal end 
+	end
+end)
+
+-- ==================== LOGIC FLY ====================
+local flying, speed, vertical = false, 1, 0
+local bv, bg
+
+plusBtn.MouseButton1Click:Connect(function()
+	speed += 1
+	speedLabel.Text = "Speed: " .. tostring(speed)
+end)
+
+minusBtn.MouseButton1Click:Connect(function()
+	speed = math.max(1, speed - 1)
+	speedLabel.Text = "Speed: " .. tostring(speed)
+end)
+
+upBtn.MouseButton1Down:Connect(function() vertical = 1 end)
+upBtn.MouseButton1Up:Connect(function() vertical = 0 end)
+downBtn.MouseButton1Down:Connect(function() vertical = -1 end)
+downBtn.MouseButton1Up:Connect(function() vertical = 0 end)
+
+flyBtn.MouseButton1Click:Connect(function()
+	flying = not flying
+	local char = player.Character
+	local humanoid = char and char:WaitForChild("Humanoid")
+	local hrp = char and char:WaitForChild("HumanoidRootPart")
+	
+	if flying then
+		flyBtn.Text = "UNFLY"
+		flyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+		if hrp then
+			bv = Instance.new("BodyVelocity")
+			bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+			bv.Velocity = Vector3.zero
+			bv.Parent = hrp
+			bg = Instance.new("BodyGyro")
+			bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+			bg.P = 10000
+			bg.Parent = hrp
+		end
+		if humanoid then humanoid.PlatformStand = true end
+	else
+		flyBtn.Text = "FLY"
+		flyBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
+		if humanoid then humanoid.PlatformStand = false end
+	end
+end)
+
+runService.RenderStepped:Connect(function()
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char and char:FindFirstChild("Humanoid")
+	
+	if flying and hrp and humanoid and bv and bg then
+		local cam = workspace.CurrentCamera
+		local move = humanoid.MoveDirection
+		local localMove = hrp.CFrame:VectorToObjectSpace(move)
+		local velocity =
+			(hrp.CFrame.LookVector * -localMove.Z) +
+			(hrp.CFrame.RightVector * localMove.X)
+		velocity += Vector3.new(0, vertical, 0)
+		if velocity.Magnitude > 0 then velocity = velocity.Unit end
+		bv.Velocity = velocity * (speed * 20)
+		bg.CFrame = cam.CFrame
+	end
+end)
