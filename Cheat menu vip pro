@@ -1,4 +1,4 @@
--- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN TỐI ĐA 15 CAM)
+-- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN 15 CAM + TP)
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local userInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local workspace = game:GetService("Workspace")
 local terrain = workspace:WaitForChild("Terrain")
 local player = players.LocalPlayer
 
-local MAX_CAMS = 15 -- Giới hạn tối đa 15 camera
+local MAX_CAMS = 15
 
 local getHui = gethui or function()
 	local coreGui = game:GetService("CoreGui")
@@ -196,10 +196,10 @@ playerScroll.BackgroundColor3 = Color3.fromRGB(40,40,40); playerScroll.BorderSiz
 preventTouchThrough(playerScroll)
 local listLayout = Instance.new("UIListLayout", playerScroll)
 
--- BẢNG ĐIỀU KHIỂN CAM DƯỚI ĐÁY
+-- BẢNG ĐIỀU KHIỂN CAM DƯỚI ĐÁY (ĐÃ MỞ RỘNG VÀ THÊM NÚT TP)
 local camControlFrame = Instance.new("Frame", screenGui)
-camControlFrame.Size = UDim2.new(0, 220, 0, 70)
-camControlFrame.Position = UDim2.new(0.5, -110, 1, -120)
+camControlFrame.Size = UDim2.new(0, 280, 0, 70)
+camControlFrame.Position = UDim2.new(0.5, -140, 1, -120)
 camControlFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 camControlFrame.BorderSizePixel = 2
 camControlFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
@@ -232,6 +232,10 @@ curCamLabel.BorderColor3 = Color3.fromRGB(60, 60, 60)
 
 local nextCamBtn = CreateBtn(">", Color3.fromRGB(80, 80, 80), UDim2.new(0, 180, 0, 30), UDim2.new(0, 40, 0, 40), 18, camControlFrame)
 nextCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- NÚT TELEPORT ĐẾN CAM DƯỚI ĐÁY
+local tpToCamBtn = CreateBtn("🌀 TP", Color3.fromRGB(0, 180, 255), UDim2.new(0, 220, 0, 30), UDim2.new(0, 60, 0, 40), 13, camControlFrame)
+tpToCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 
 -- TRANG 3 (CAMERA PHÂN THÂN - TỐI ĐA 15 SLOT)
 local page3 = Instance.new("Frame", mainFrame)
@@ -289,6 +293,17 @@ local function exitCameraView()
 		end
 	end
 end
+
+-- XỬ LÝ SỰ KIỆN NÚT TP TẠI CAM
+tpToCamBtn.MouseButton1Click:Connect(function()
+	if currentViewingCam == 0 or not cameraData[currentViewingCam] then return end
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		-- Dịch chuyển nhân vật đến đúng vị trí Camera (cao hơn 2 studs để tránh kẹt đất)
+		hrp.CFrame = cameraData[currentViewingCam].CFrame * CFrame.new(0, 2, 0)
+	end
+	exitCameraView()
+end)
 
 local function ViewCamera(index)
 	if currentViewingCam == index then
