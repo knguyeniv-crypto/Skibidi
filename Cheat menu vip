@@ -346,7 +346,6 @@ fixLagBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==================== NOCLIP ====================
-local noclipOn = false
 noclipBtn.MouseButton1Click:Connect(function()
 	noclipOn = not noclipOn
 	if noclipOn then
