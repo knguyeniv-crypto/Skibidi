@@ -1,4 +1,4 @@
--- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN 15 CAM + TP)
+-- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN 15 CAM + TP CHỐNG VĂNG)
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local userInputService = game:GetService("UserInputService")
@@ -196,7 +196,7 @@ playerScroll.BackgroundColor3 = Color3.fromRGB(40,40,40); playerScroll.BorderSiz
 preventTouchThrough(playerScroll)
 local listLayout = Instance.new("UIListLayout", playerScroll)
 
--- BẢNG ĐIỀU KHIỂN CAM DƯỚI ĐÁY (ĐÃ MỞ RỘNG VÀ THÊM NÚT TP)
+-- BẢNG ĐIỀU KHIỂN CAM DƯỚI ĐÁY
 local camControlFrame = Instance.new("Frame", screenGui)
 camControlFrame.Size = UDim2.new(0, 280, 0, 70)
 camControlFrame.Position = UDim2.new(0.5, -140, 1, -120)
@@ -294,14 +294,29 @@ local function exitCameraView()
 	end
 end
 
--- XỬ LÝ SỰ KIỆN NÚT TP TẠI CAM
+-- XỬ LÝ SỰ KIỆN NÚT TP TẠI CAM (ĐÃ FIX CHỐNG VĂNG SIÊU XA)
 tpToCamBtn.MouseButton1Click:Connect(function()
 	if currentViewingCam == 0 or not cameraData[currentViewingCam] then return end
-	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	
 	if hrp then
-		-- Dịch chuyển nhân vật đến đúng vị trí Camera (cao hơn 2 studs để tránh kẹt đất)
-		hrp.CFrame = cameraData[currentViewingCam].CFrame * CFrame.new(0, 2, 0)
+		-- 1. Xóa sạch mọi lực tác động cũ (chống văng)
+		hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		
+		-- 2. Tạm thời đóng băng nhân vật
+		hrp.Anchored = true
+		
+		-- 3. TP cao hơn vị trí Cam 3.5 studs để tránh kẹt đất
+		hrp.CFrame = cameraData[currentViewingCam].CFrame * CFrame.new(0, 3.5, 0)
+		
+		-- 4. Bỏ neo sau 0.15s để server nhận diện vị trí mới an toàn
+		task.delay(0.15, function()
+			if hrp then hrp.Anchored = false end
+		end)
 	end
+	
 	exitCameraView()
 end)
 
