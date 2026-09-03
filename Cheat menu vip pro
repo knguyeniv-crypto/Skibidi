@@ -1,4 +1,4 @@
--- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN 15 CAM + TP CHỐNG VĂNG)
+-- MENU CHEAT (ĐÃ TÍCH HỢP FLY, ESP, GOD MODE, FIX LAG & CAMERA PHÂN THÂN 15 CAM + TP CHỐNG VĂNG + KHUNG ĐỔI TÊN CÓ NÚT X)
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local userInputService = game:GetService("UserInputService")
@@ -392,21 +392,63 @@ for i = 1, MAX_CAMS do
 		ViewCamera(i)
 	end)
 	
+	-- BẢNG ĐỔI TÊN CÓ NÚT X ĐÓNG GÓC PHẢI
 	camUIRows[i].RenameBtn.MouseButton1Click:Connect(function()
 		if not cameraData[i] then return end
 		local oldName = camUIRows[i].CustomName
-		local promptBox = Instance.new("TextBox", screenGui)
-		promptBox.Size = UDim2.new(0, 200, 0, 40)
-		promptBox.Position = UDim2.new(0.5, -100, 0.5, -20)
-		promptBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		
+		local renameFrame = Instance.new("Frame", screenGui)
+		renameFrame.Size = UDim2.new(0, 220, 0, 75)
+		renameFrame.Position = UDim2.new(0.5, -110, 0.5, -35)
+		renameFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		renameFrame.BorderSizePixel = 2
+		renameFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+		renameFrame.ZIndex = 5000
+		preventTouchThrough(renameFrame)
+		
+		local frameCorner = Instance.new("UICorner", renameFrame)
+		frameCorner.CornerRadius = UDim.new(0, 6)
+		
+		local titleLbl = Instance.new("TextLabel", renameFrame)
+		titleLbl.Size = UDim2.new(1, -30, 0, 25)
+		titleLbl.Position = UDim2.new(0, 10, 0, 5)
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+		titleLbl.Text = "Đổi tên Camera"
+		titleLbl.Font = Enum.Font.SourceSansBold
+		titleLbl.TextSize = 13
+		titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+		titleLbl.ZIndex = 5001
+		
+		local closeXBtn = Instance.new("TextButton", renameFrame)
+		closeXBtn.Size = UDim2.new(0, 22, 0, 22)
+		closeXBtn.Position = UDim2.new(1, -27, 0, 5)
+		closeXBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		closeXBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeXBtn.Text = "X"
+		closeXBtn.Font = Enum.Font.SourceSansBold
+		closeXBtn.TextSize = 12
+		closeXBtn.BorderSizePixel = 0
+		closeXBtn.ZIndex = 5001
+		local xCorner = Instance.new("UICorner", closeXBtn)
+		xCorner.CornerRadius = UDim.new(0, 4)
+		
+		local promptBox = Instance.new("TextBox", renameFrame)
+		promptBox.Size = UDim2.new(1, -20, 0, 32)
+		promptBox.Position = UDim2.new(0, 10, 0, 35)
+		promptBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 		promptBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 		promptBox.Text = oldName
 		promptBox.Font = Enum.Font.SourceSansBold
 		promptBox.TextSize = 14
-		promptBox.BorderSizePixel = 2
-		promptBox.ZIndex = 5000
-		promptBox.FocusLost:Connect(function(enterPressed)
-			if enterPressed and promptBox.Text ~= "" then
+		promptBox.BorderSizePixel = 1
+		promptBox.BorderColor3 = Color3.fromRGB(80, 80, 80)
+		promptBox.ZIndex = 5001
+		local boxCorner = Instance.new("UICorner", promptBox)
+		boxCorner.CornerRadius = UDim.new(0, 4)
+		
+		local function saveAndClose()
+			if promptBox.Text ~= "" then
 				camUIRows[i].CustomName = promptBox.Text
 				if currentViewingCam == i then
 					camUIRows[i].ViewBtn.Text = promptBox.Text .. " (Đang xem)"
@@ -415,8 +457,20 @@ for i = 1, MAX_CAMS do
 					camUIRows[i].ViewBtn.Text = promptBox.Text
 				end
 			end
-			promptBox:Destroy()
+			renameFrame:Destroy()
+		end
+		
+		promptBox.FocusLost:Connect(function(enterPressed)
+			if enterPressed then
+				saveAndClose()
+			end
 		end)
+		
+		closeXBtn.MouseButton1Click:Connect(function()
+			renameFrame:Destroy()
+		end)
+		
+		promptBox:CaptureFocus()
 	end)
 	
 	camUIRows[i].DelBtn.MouseButton1Click:Connect(function()
